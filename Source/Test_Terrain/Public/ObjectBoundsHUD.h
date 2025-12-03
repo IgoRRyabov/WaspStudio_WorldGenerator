@@ -16,8 +16,12 @@ public:
 
 protected:
 	virtual void DrawHUD() override;
-	
+
+	virtual void BeginPlay() override;
 public:
+	UPROPERTY()
+	TArray<AActor*> CachedActors;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName DetectionTag = "Detectable";
 };
