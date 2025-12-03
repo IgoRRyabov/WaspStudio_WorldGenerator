@@ -1,35 +1,42 @@
 #include "ObjectBoundsHUD.h"
 
+#include "TargetActor.h"
 #include "Engine/Canvas.h"
+#include "Kismet/GameplayStatics.h"
 
 void AObjectBoundsHUD::DrawHUD()
 {
 	Super::DrawHUD();
 
-	UE_LOG(LogTemp, Warning, TEXT("HUD TICK"));
-
 	if (!Canvas) return;
 
-	for (UScreenBoundsComponent* BoundsComponent : BoundComponents)
+	// ищем акторы по тегу
+	TArray<AActor*> Actors;
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), DetectionTag, Actors);
+
+	for (AActor* A : Actors)
 	{
-		if (!BoundsComponent)
-			continue;
+		if (!A) continue;
 
-		FScreenBounds2D B = BoundsComponent->ComputeScreenBounds();
-		if (!B.IsValid())
-			continue;
+		UScreenBoundsComponent* B = A->FindComponentByClass<UScreenBoundsComponent>();
+		if (!B) continue;
 
-		const float X1 = (float)B.MinX;
-		const float Y1 = (float)B.MinY;
-		const float X2 = (float)B.MaxX;
-		const float Y2 = (float)B.MaxY;
+		FScreenBox Box;
+		if (!B->IsVisible(Box))
+			continue; // камера НЕ видит — не рисуем рамку
 
-		const float Thickness = 2.f;
-		const FLinearColor Color = FLinearColor::Green;
+		float X1 = Box.Min.X;
+		float Y1 = Box.Min.Y;
+		float X2 = Box.Max.X;
+		float Y2 = Box.Max.Y;
 
-		DrawLine(X1, Y1, X2, Y1, Color, Thickness); // top
-		DrawLine(X1, Y2, X2, Y2, Color, Thickness); // bottom
-		DrawLine(X1, Y1, X1, Y2, Color, Thickness); // left
-		DrawLine(X2, Y1, X2, Y2, Color, Thickness); // right
+		// толщина рамки
+		float Thickness = 3.f;
+		FLinearColor Color = FLinearColor(0, 1, 0);
+
+		DrawLine(X1, Y1, X2, Y1, Color, Thickness);
+		DrawLine(X2, Y1, X2, Y2, Color, Thickness);
+		DrawLine(X2, Y2, X1, Y2, Color, Thickness);
+		DrawLine(X1, Y2, X1, Y1, Color, Thickness);
 	}
 }

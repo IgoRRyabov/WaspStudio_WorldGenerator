@@ -5,16 +5,26 @@
 #include "ScreenBoundsComponent.generated.h"
 
 USTRUCT(BlueprintType)
-struct FScreenBounds2D
+struct FScreenBox
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly) int32 MinX = 0;
-	UPROPERTY(BlueprintReadOnly) int32 MinY = 0;
-	UPROPERTY(BlueprintReadOnly) int32 MaxX = 0;
-	UPROPERTY(BlueprintReadOnly) int32 MaxY = 0;
+	UPROPERTY(BlueprintReadOnly)
+	FVector2D Min;
 
-	bool IsValid() const { return MaxX > MinX && MaxY > MinY; }
+	UPROPERTY(BlueprintReadOnly)
+	FVector2D Max;
+
+	FScreenBox()
+	{
+		Min = FVector2D(FLT_MAX, FLT_MAX);
+		Max = FVector2D(-FLT_MAX, -FLT_MAX);
+	}
+
+	bool IsValid() const
+	{
+		return Min.X <= Max.X && Min.Y <= Max.Y;
+	}
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -22,10 +32,17 @@ class TEST_TERRAIN_API UScreenBoundsComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
+public:
 	UScreenBoundsComponent();
 
 	UFUNCTION(BlueprintCallable)
-	FScreenBounds2D ComputeScreenBounds() const;
-	
+	FScreenBox ComputeScreenBounds();
+
+	UFUNCTION(BlueprintCallable)
+	bool IsVisible(FScreenBox& OutBounds);
+protected:
+	virtual void BeginPlay() override;
+
+private:
+	TArray<UStaticMeshComponent*> Meshes;
 };

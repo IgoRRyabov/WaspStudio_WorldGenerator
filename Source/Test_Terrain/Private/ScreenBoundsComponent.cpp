@@ -1,5 +1,5 @@
 #include "ScreenBoundsComponent.h"
-
+#include <cfloat>
 #include "Kismet/GameplayStatics.h"
 
 
@@ -8,68 +8,107 @@ UScreenBoundsComponent::UScreenBoundsComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-FScreenBounds2D UScreenBoundsComponent::ComputeScreenBounds() const
+FScreenBox UScreenBoundsComponent::ComputeScreenBounds()
 {
-	FScreenBounds2D Out;
-
-	AActor* Owner = GetOwner();
-	if (!Owner)
-		return Out;
+	FScreenBox Out;
 
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	if (!PC)
+	if (!PC || Meshes.Num() == 0)
 		return Out;
 
-	// 1) Берём мировую AABB всех компонентов
-	FBox Box = Owner->GetComponentsBoundingBox(true);
-	if (!Box.IsValid)
-		return Out;
-
-	const FVector Min = Box.Min;
-	const FVector Max = Box.Max;
-
-	// 8 углов бокса
-	TArray<FVector> Corners;
-	Corners.SetNum(8);
-	Corners[0] = FVector(Min.X, Min.Y, Min.Z);
-	Corners[1] = FVector(Min.X, Min.Y, Max.Z);
-	Corners[2] = FVector(Min.X, Max.Y, Min.Z);
-	Corners[3] = FVector(Min.X, Max.Y, Max.Z);
-	Corners[4] = FVector(Max.X, Min.Y, Min.Z);
-	Corners[5] = FVector(Max.X, Min.Y, Max.Z);
-	Corners[6] = FVector(Max.X, Max.Y, Min.Z);
-	Corners[7] = FVector(Max.X, Max.Y, Max.Z);
-
-	int32 MinX = TNumericLimits<int32>::Max();
-	int32 MinY = TNumericLimits<int32>::Max();
-	int32 MaxX = TNumericLimits<int32>::Lowest();
-	int32 MaxY = TNumericLimits<int32>::Lowest();
-
-	// 2) Проецируем все углы в экран
-	for (const FVector& WorldPos : Corners)
+	// Проходим по всем StaticMeshComponent’ам, включая башню и ствол
+	for (UStaticMeshComponent* MeshComp : Meshes)
 	{
-		FVector2D ScreenPos;
-		const bool bProjected =
-			UGameplayStatics::ProjectWorldToScreen(PC, WorldPos, ScreenPos, true);
-
-		if (!bProjected)
+		if (!MeshComp || !MeshComp->GetStaticMesh())
 			continue;
 
-		MinX = FMath::Min(MinX, (int32)ScreenPos.X);
-		MinY = FMath::Min(MinY, (int32)ScreenPos.Y);
-		MaxX = FMath::Max(MaxX, (int32)ScreenPos.X);
-		MaxY = FMath::Max(MaxY, (int32)ScreenPos.Y);
+		UStaticMesh* Mesh = MeshComp->GetStaticMesh();
+		if (!Mesh->GetRenderData())
+			continue;
+
+		// Только LOD0 — он самый точный
+		const FStaticMeshLODResources& LOD = Mesh->GetRenderData()->LODResources[0];
+		const FPositionVertexBuffer& VB = LOD.VertexBuffers.PositionVertexBuffer;
+
+		FVector2D Screen;
+		FVector World;
+
+		for (uint32 i = 0; i < VB.GetNumVertices(); i++)
+		{
+			const FVector LocalPos = FVector(VB.VertexPosition(i));
+			World = MeshComp->GetComponentTransform().TransformPosition(LocalPos);
+
+			// Проецируем в экранные координаты
+			if (PC->ProjectWorldLocationToScreen(World, Screen))
+			{
+				Out.Min.X = FMath::Min(Out.Min.X, Screen.X);
+				Out.Min.Y = FMath::Min(Out.Min.Y, Screen.Y);
+				Out.Max.X = FMath::Max(Out.Max.X, Screen.X);
+				Out.Max.Y = FMath::Max(Out.Max.Y, Screen.Y);
+			}
+		}
 	}
-
-	if (MinX == TNumericLimits<int32>::Max())
-		return Out; // ничего не спроецировалось (объект вне камеры)
-
-	Out.MinX = MinX;
-	Out.MinY = MinY;
-	Out.MaxX = MaxX;
-	Out.MaxY = MaxY;
 
 	return Out;
 }
 
+bool UScreenBoundsComponent::IsVisible(FScreenBox& OutBounds)
+{
+	OutBounds = FScreenBox();
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!PC) return false;
+
+	bool bHasVisibleVertex = false;
+
+	for (UStaticMeshComponent* MeshComp : Meshes)
+	{
+		if (!MeshComp || !MeshComp->GetStaticMesh())
+			continue;
+
+		const FStaticMeshLODResources& LOD =
+			MeshComp->GetStaticMesh()->GetRenderData()->LODResources[0];
+
+		const FPositionVertexBuffer& VB = LOD.VertexBuffers.PositionVertexBuffer;
+		const FTransform& X = MeshComp->GetComponentTransform();
+
+		for (uint32 i = 0; i < VB.GetNumVertices(); i++)
+		{
+			FVector World = X.TransformPosition(FVector(VB.VertexPosition(i)));
+
+			FVector2D Screen;
+			if (PC->ProjectWorldLocationToScreen(World, Screen))
+			{
+				OutBounds.Min.X = FMath::Min(OutBounds.Min.X, Screen.X);
+				OutBounds.Min.Y = FMath::Min(OutBounds.Min.Y, Screen.Y);
+				OutBounds.Max.X = FMath::Max(OutBounds.Max.X, Screen.X);
+				OutBounds.Max.Y = FMath::Max(OutBounds.Max.Y, Screen.Y);
+
+				bHasVisibleVertex = true;
+			}
+		}
+	}
+
+	return bHasVisibleVertex && OutBounds.IsValid();
+}
+
+void UScreenBoundsComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	TArray<UActorComponent*> All;
+	GetOwner()->GetComponents(All);
+
+	for (UActorComponent* C : All)
+	{
+		if (UStaticMeshComponent* SM = Cast<UStaticMeshComponent>(C))
+		{
+			if (SM->GetStaticMesh())
+			{
+				Meshes.Add(SM);
+				UE_LOG(LogTemp, Warning, TEXT("ScreenBounds: Added Mesh %s"), *SM->GetName());
+			}
+		}
+	}
+}
 

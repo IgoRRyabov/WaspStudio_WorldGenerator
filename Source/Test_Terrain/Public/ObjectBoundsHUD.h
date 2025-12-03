@@ -16,4 +16,8 @@ public:
 
 protected:
 	virtual void DrawHUD() override;
+	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName DetectionTag = "Detectable";
 };
