@@ -8,133 +8,179 @@ UScreenBoundsComponent::UScreenBoundsComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-FScreenBox UScreenBoundsComponent::ComputeScreenBounds()
-{
-	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-	return ComputeScreenBounds_Internal(PC);
-}
-
-bool UScreenBoundsComponent::IsVisible(FScreenBox& OutBounds)
-{
-	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-
-	// 1) быстрый frustum/AABB тест
-	if (!FastAABBVisibilityTest(PC))
-		return false;
-
-	// 2) точный pixel-perfect тест
-	OutBounds = ComputeScreenBounds_Internal(PC);
-
-	return OutBounds.IsValid();
-}
 
 void UScreenBoundsComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	TArray<UActorComponent*> All;
-	GetOwner()->GetComponents(All);
+	TArray<UActorComponent*> Comps;
+	GetOwner()->GetComponents(Comps);
 
-	for (UActorComponent* C : All)
+	for (UActorComponent* C : Comps)
 	{
-		if (auto* SM = Cast<UStaticMeshComponent>(C))
+		if (UStaticMeshComponent* SM = Cast<UStaticMeshComponent>(C))
 		{
-			if (!SM->GetStaticMesh()) continue;
+			UStaticMesh* Mesh = SM->GetStaticMesh();
+			if (!Mesh) continue;
 
-			const FStaticMeshRenderData* RD = SM->GetStaticMesh()->GetRenderData();
-			if (!RD || RD->LODResources.Num() == 0) continue;
+			const FStaticMeshRenderData* RenderData = Mesh->GetRenderData();
+			if (!RenderData || RenderData->LODResources.Num() == 0) continue;
 
-			const FStaticMeshLODResources& LOD = RD->LODResources[0];
+			const FStaticMeshLODResources& LOD = RenderData->LODResources[0];
 			const FPositionVertexBuffer& VB = LOD.VertexBuffers.PositionVertexBuffer;
-
-			if (VB.GetNumVertices() == 0) continue;
+			const uint32 NumVerts = VB.GetNumVertices();
+			if (NumVerts == 0) continue;
 
 			FCachedMeshData Cache;
 			Cache.MeshComp = SM;
+			Cache.LocalVertices.Reserve(NumVerts);
 
-			Cache.LocalVertices.Reserve(VB.GetNumVertices());
-			FVector3f V3f;
-
-			FBox Box(ForceInit);
-
-			for (uint32 i = 0; i < VB.GetNumVertices(); i++)
+			for (uint32 i = 0; i < NumVerts; ++i)
 			{
-				V3f = VB.VertexPosition(i);
-				FVector V(V3f);
-				Cache.LocalVertices.Add(V);
-				Box += V;
+				const FVector3f PosF = VB.VertexPosition(i);
+				Cache.LocalVertices.Add(FVector(PosF));
 			}
-
-			Cache.LocalBounds = Box;
 
 			CachedMeshes.Add(Cache);
 		}
 	}
 }
 
-bool UScreenBoundsComponent::FastAABBVisibilityTest(APlayerController* PC) const
+bool UScreenBoundsComponent::ComputeScreenBounds(FScreenBox& OutBounds)
+{
+	OutBounds = FScreenBox();
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!PC || CachedMeshes.Num() == 0)
+		return false;
+
+	if (bUseAsyncTask)
+	{
+		return ComputeScreenBounds_Async(OutBounds);
+	}
+	else
+	{
+		return ComputeScreenBounds_Sync(PC, OutBounds);
+	}
+}
+
+//
+// СИНХРОННАЯ версия (как раньше, но с кешем и sampling)
+//
+bool UScreenBoundsComponent::ComputeScreenBounds_Sync(
+	APlayerController* PC,
+	FScreenBox& OutBounds) const
+{
+	const int32 Step = FMath::Max(1, VertexSampleStep);
+	bool bHasPoint = false;
+
+	for (const FCachedMeshData& CM : CachedMeshes)
+	{
+		if (!CM.MeshComp || CM.LocalVertices.Num() == 0)
+			continue;
+
+		const FTransform& X = CM.MeshComp->GetComponentTransform();
+
+		for (int32 i = 0; i < CM.LocalVertices.Num(); i += Step)
+		{
+			const FVector World = X.TransformPosition(CM.LocalVertices[i]);
+
+			FVector2D S;
+			if (PC->ProjectWorldLocationToScreen(World, S))
+			{
+				OutBounds.Min.X = FMath::Min(OutBounds.Min.X, S.X);
+				OutBounds.Min.Y = FMath::Min(OutBounds.Min.Y, S.Y);
+				OutBounds.Max.X = FMath::Max(OutBounds.Max.X, S.X);
+				OutBounds.Max.Y = FMath::Max(OutBounds.Max.Y, S.Y);
+
+				bHasPoint = true;
+			}
+		}
+	}
+
+	return bHasPoint && OutBounds.IsValid();
+}
+
+bool UScreenBoundsComponent::FastAABBTest(APlayerController* PC) const
 {
 	if (!PC) return false;
 	const AActor* Owner = GetOwner();
 	if (!Owner) return false;
 
-	// Получаем AABB актора
-	FVector Origin;
-	FVector Extent;
+	// AABB
+	FVector Origin, Extent;
 	Owner->GetActorBounds(false, Origin, Extent);
-
-	const float Radius = Extent.GetMax();
 
 	// Камера
 	FVector CamLoc;
 	FRotator CamRot;
 	PC->GetPlayerViewPoint(CamLoc, CamRot);
-	const FVector Forward = CamRot.Vector();
-	const FVector ToObj = (Origin - CamLoc).GetSafeNormal();
 
-	// 1. Если объект позади камеры — пропускаем
-	if (FVector::DotProduct(Forward, ToObj) < 0.f)
-		return false;
+	FVector Dir = (Origin - CamLoc).GetSafeNormal();
 
-	// 2. Быстрый проект в экран
-	FVector2D Screen;
-	if (!PC->ProjectWorldLocationToScreen(Origin, Screen))
+	// Позади камеры?
+	if (FVector::DotProduct(CamRot.Vector(), Dir) < 0.f)
 		return false;
 
 	return true;
 }
 
-FScreenBox UScreenBoundsComponent::ComputeScreenBounds_Internal(APlayerController* PC) const
+bool UScreenBoundsComponent::IsVisible(FScreenBox& OutBounds)
 {
-	FScreenBox Out;
-	if (!PC || CachedMeshes.Num() == 0)
-		return Out;
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!PC) return false;
 
-	int32 Step = FMath::Max(1, VertexSampleStep);
+	// 1) Быстрый отсекающий тест
+	if (!FastAABBTest(PC))
+		return false;
 
-	for (const FCachedMeshData& M : CachedMeshes)
+	// 2) Точный pixel-perfect расчёт
+	return ComputeScreenBounds_Async(OutBounds);
+}
+
+//
+// АСИНХРОННАЯ версия: TaskGraph считает world-позиции вершин,
+// GT только проецирует их в экран.
+//
+bool UScreenBoundsComponent::ComputeScreenBounds_Async(
+	FScreenBox& OutBounds)
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (!PC) return false;
+
+	// Собрали трансформы мешей
+	TArray<FTransform> MeshTransforms;
+	MeshTransforms.SetNum(CachedMeshes.Num());
+	for (int32 i = 0; i < CachedMeshes.Num(); ++i)
+		MeshTransforms[i] = CachedMeshes[i].MeshComp ?
+			CachedMeshes[i].MeshComp->GetComponentTransform() :
+			FTransform::Identity;
+
+	// Буфер world-точек
+	TArray<TArray<FVector>> WorldPoints;
+	WorldPoints.SetNum(CachedMeshes.Num());
+
+	// ---- ASYNC TASK ----
+	FAsyncTask<FWorldPointsTask> Task(&CachedMeshes, &MeshTransforms, &WorldPoints, VertexSampleStep);
+	Task.StartBackgroundTask();
+	Task.EnsureCompletion();
+	// ---------------------
+
+	bool bHasPoint = false;
+
+	// Проецируем world → экран
+	for (const TArray<FVector>& MeshPts : WorldPoints)
 	{
-		if (!M.MeshComp || M.LocalVertices.Num() == 0)
-			continue;
-
-		const FTransform& X = M.MeshComp->GetComponentTransform();
-
-		for (int32 i = 0; i < M.LocalVertices.Num(); i += Step)
+		for (const FVector& P : MeshPts)
 		{
-			const FVector World = X.TransformPosition(M.LocalVertices[i]);
-			FVector2D Screen;
-
-			if (PC->ProjectWorldLocationToScreen(World, Screen))
+			FVector2D S;
+			if (PC->ProjectWorldLocationToScreen(P, S))
 			{
-				Out.Min.X = FMath::Min(Out.Min.X, Screen.X);
-				Out.Min.Y = FMath::Min(Out.Min.Y, Screen.Y);
-				Out.Max.X = FMath::Max(Out.Max.X, Screen.X);
-				Out.Max.Y = FMath::Max(Out.Max.Y, Screen.Y);
+				OutBounds.IncludePoint(S);
+				bHasPoint = true;
 			}
 		}
 	}
 
-	return Out;
+	return bHasPoint && OutBounds.IsValid();
 }
-
-
