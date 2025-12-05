@@ -64,9 +64,6 @@ bool UScreenBoundsComponent::ComputeScreenBounds(FScreenBox& OutBounds)
 	}
 }
 
-//
-// СИНХРОННАЯ версия (как раньше, но с кешем и sampling)
-//
 bool UScreenBoundsComponent::ComputeScreenBounds_Sync(
 	APlayerController* PC,
 	FScreenBox& OutBounds) const

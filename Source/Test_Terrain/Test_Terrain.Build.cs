@@ -9,7 +9,15 @@ public class Test_Terrain : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore",
-			"Slate", "SlateCore", "UMG" });
+			"Slate", "SlateCore", "UMG", "MovieRenderPipelineCore", "MovieRenderPipelineCore",
+			"MovieRenderPipelineRenderPasses",
+			"MovieRenderPipelineSettings",
+			"MovieRenderPipelineEditor",
+			"MoviePlayer",
+			"MovieScene",
+			"MovieSceneTracks",
+			"MovieSceneCapture",
+			"LevelSequence"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
