@@ -1,38 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Camera/CameraComponent.h"
 #include "Components/ActorComponent.h"
 #include "ScreenBoundsComponent.generated.h"
-
-USTRUCT(BlueprintType)
-struct FScreenBox
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly)
-	FVector2D Min;
-
-	UPROPERTY(BlueprintReadOnly)
-	FVector2D Max;
-
-	FScreenBox()
-		: Min(FLT_MAX, FLT_MAX)
-		, Max(-FLT_MAX, -FLT_MAX)
-	{}
-
-	bool IsValid() const
-	{
-		return Min.X <= Max.X && Min.Y <= Max.Y;
-	}
-
-	void IncludePoint(const FVector2D& P)
-	{
-		Min.X = FMath::Min(Min.X, P.X);
-		Min.Y = FMath::Min(Min.Y, P.Y);
-		Max.X = FMath::Max(Max.X, P.X);
-		Max.Y = FMath::Max(Max.Y, P.Y);
-	}
-};
 
 USTRUCT()
 struct FCachedMeshData
@@ -40,93 +11,86 @@ struct FCachedMeshData
 	GENERATED_BODY()
 
 	UPROPERTY()
-	UStaticMeshComponent* MeshComp = nullptr;
+	TWeakObjectPtr<UStaticMeshComponent> MeshComp;
 
-	// Локальные вершины LOD0
+	UPROPERTY()
 	TArray<FVector> LocalVertices;
-
-	// AABB локального меша (прямо из кеша)
-	FBox LocalBounds;
 };
+
+
+USTRUCT(BlueprintType)
+struct FScreenBox
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly) FVector2D Min = FVector2D(FLT_MAX, FLT_MAX);
+	UPROPERTY(BlueprintReadOnly) FVector2D Max = FVector2D(-FLT_MAX, -FLT_MAX);
+
+	FORCEINLINE void Reset()
+	{
+		Min = FVector2D(FLT_MAX, FLT_MAX);
+		Max = FVector2D(-FLT_MAX, -FLT_MAX);
+	}
+
+	FORCEINLINE void IncludePoint(const FVector2D& P)
+	{
+		Min.X = FMath::Min(Min.X, P.X);
+		Min.Y = FMath::Min(Min.Y, P.Y);
+		Max.X = FMath::Max(Max.X, P.X);
+		Max.Y = FMath::Max(Max.Y, P.Y);
+	}
+
+	FORCEINLINE bool IsValid() const
+	{
+		return Min.X <= Max.X && Min.Y <= Max.Y
+			&& FMath::IsFinite(Min.X) && FMath::IsFinite(Min.Y)
+			&& FMath::IsFinite(Max.X) && FMath::IsFinite(Max.Y)
+			&& Min.X != FLT_MAX && Min.Y != FLT_MAX
+			&& Max.X != -FLT_MAX && Max.Y != -FLT_MAX;
+	}
+};
+
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class TEST_TERRAIN_API UScreenBoundsComponent : public UActorComponent
 {
 	GENERATED_BODY()
-
 public:
 	UScreenBoundsComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ScreenBounds")
-	int32 VertexSampleStep = 16;
+	// Сэмплинг: 1 = все вершины, 2 = каждая 2-я, 4 = каждая 4-я и т.д.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds")
+	int32 VertexSampleStep = 4;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ScreenBounds")
-	bool bUseAsyncTask = true; // пока не используем, оставим флаг для будущего
-
-	UFUNCTION(BlueprintCallable)
-	bool IsVisible(FScreenBox& OutBounds);
-
-	UFUNCTION(BlueprintCallable)
-	bool ComputeScreenBounds_Async(FScreenBox& OutBounds);
-
-	UFUNCTION(BlueprintCallable, Category="ScreenBounds")
-	bool ComputeScreenBounds(FScreenBox& OutBounds);
-
-	bool ComputeScreenBounds_Sync(APlayerController* PC, FScreenBox& OutBounds) const;
-
-	bool FastAABBTest(APlayerController* PC) const;
-
+	/** БЫСТРЫЙ тест: объект не позади камеры. */
 	UFUNCTION(BlueprintCallable, Category="Bounds")
-	bool ComputeRenderBounds(UCameraComponent* RenderCamera, int32 RenderW, int32 RenderH, FScreenBox& OutBounds) const;
+	bool FastAABBTest_FromCamera(UCameraComponent* Camera) const;
 
-	static bool ProjectWorldToRenderPx(const FVector& World, const FIntRect& ViewRect, const FMatrix& ViewProj, FVector2D& OutPx);
-	
+	/** Старый вариант: bbox относительно viewport (как у тебя в HUD). */
+	UFUNCTION(BlueprintCallable, Category="Bounds")
+	bool ComputeViewportBounds(FScreenBox& OutBounds) const;
+
+	/**
+	 * ВАЖНОЕ: bbox относительно РЕНДЕРА RenderW×RenderH, от конкретной камеры рендера.
+	 * Начало координат = верхний левый угол.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Bounds")
+	bool ComputeRenderBoundsFromCamera(UCameraComponent* RenderCamera, int32 RenderW, int32 RenderH, FScreenBox& OutBounds) const;
+
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	UPROPERTY()
 	TArray<FCachedMeshData> CachedMeshes;
-};
 
+private:
+	static bool ProjectWorldToRenderPx(
+		const FVector& World,
+		const FMatrix& ViewProj,
+		int32 RenderW,
+		int32 RenderH,
+		FVector2D& OutPx);
 
-class FWorldPointsTask : public FNonAbandonableTask
-{
-public:
-	const TArray<FCachedMeshData>* Meshes;
-	const TArray<FTransform>* Transforms;
-	TArray<TArray<FVector>>* OutPoints;
-	int32 Step;
-
-	FWorldPointsTask(
-		const TArray<FCachedMeshData>* InMeshes,
-		const TArray<FTransform>* InTransforms,
-		TArray<TArray<FVector>>* InOutPoints,
-		int32 InStep)
-		: Meshes(InMeshes), Transforms(InTransforms),
-		  OutPoints(InOutPoints), Step(InStep) {}
-
-	void DoWork()
-	{
-		for (int32 m = 0; m < Meshes->Num(); ++m)
-		{
-			const FCachedMeshData& CM = (*Meshes)[m];
-			if (!CM.MeshComp || CM.LocalVertices.Num() == 0)
-				continue;
-
-			const FTransform& X = (*Transforms)[m];
-			TArray<FVector>& Dest = (*OutPoints)[m];
-			Dest.Reserve(CM.LocalVertices.Num() / Step + 1);
-
-			for (int32 i = 0; i < CM.LocalVertices.Num(); i += Step)
-			{
-				Dest.Add(X.TransformPosition(CM.LocalVertices[i]));
-			}
-		}
-	}
-
-	FORCEINLINE TStatId GetStatId() const
-	{
-		RETURN_QUICK_DECLARE_CYCLE_STAT(FWorldPointsTask, STATGROUP_ThreadPoolAsyncTasks);
-	}
+	static FMatrix BuildViewProjectionMatrixFromCamera(UCameraComponent* Cam, int32 RenderW, int32 RenderH);
 };

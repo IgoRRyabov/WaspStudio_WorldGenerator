@@ -21,23 +21,23 @@ void AObjectBoundsHUD::DrawHUD()
 		UScreenBoundsComponent* Bounds = A->FindComponentByClass<UScreenBoundsComponent>();
 		if (!Bounds) continue;
 
-		FScreenBox Box;
-		if (Bounds->IsVisible(Box))
-		{
-			float X1 = Box.Min.X;
-			float Y1 = Box.Min.Y;
-			float X2 = Box.Max.X;
-			float Y2 = Box.Max.Y;
-
-			// толщина рамки
-			float Thickness = 3.f;
-			FLinearColor Color = FLinearColor(0, 1, 0);
-
-			DrawLine(X1, Y1, X2, Y1, Color, Thickness);
-			DrawLine(X2, Y1, X2, Y2, Color, Thickness);
-			DrawLine(X2, Y2, X1, Y2, Color, Thickness);
-			DrawLine(X1, Y2, X1, Y1, Color, Thickness);
-		}
+		//FScreenBox Box;
+		//if (Bounds->IsVisible(Box))
+		// {
+		// 	float X1 = Box.Min.X;
+		// 	float Y1 = Box.Min.Y;
+		// 	float X2 = Box.Max.X;
+		// 	float Y2 = Box.Max.Y;
+		//
+		// 	// толщина рамки
+		// 	float Thickness = 3.f;
+		// 	FLinearColor Color = FLinearColor(0, 1, 0);
+		//
+		// 	DrawLine(X1, Y1, X2, Y1, Color, Thickness);
+		// 	DrawLine(X2, Y1, X2, Y2, Color, Thickness);
+		// 	DrawLine(X2, Y2, X1, Y2, Color, Thickness);
+		// 	DrawLine(X1, Y2, X1, Y1, Color, Thickness);
+		// }
 	}
 }
 

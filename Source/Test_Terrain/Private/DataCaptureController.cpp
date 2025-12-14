@@ -84,7 +84,7 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 		if (!Bounds) continue;
 
 		FScreenBox Box;
-		if (!Bounds->ComputeRenderBounds(RenderCamera, RenderW, RenderH, Box))
+		if (!Bounds->ComputeRenderBoundsFromCamera(RenderCamera, RenderW, RenderH, Box))
 			continue;
 
 		// clamp в пределах рендера
