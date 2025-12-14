@@ -8,7 +8,7 @@ ATargetActor::ATargetActor()
 	RootComponent = MeshComp;
 
 	ScreenBounds = CreateDefaultSubobject<UScreenBoundsComponent>(TEXT("ScreenBounds"));
-	Tags.Add("BoundsTarget");
+	Tags.Add("Detectable");
 }
 
 void ATargetActor::BeginPlay()

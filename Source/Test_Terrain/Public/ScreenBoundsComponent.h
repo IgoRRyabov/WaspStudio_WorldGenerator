@@ -75,6 +75,12 @@ public:
 	bool ComputeScreenBounds_Sync(APlayerController* PC, FScreenBox& OutBounds) const;
 
 	bool FastAABBTest(APlayerController* PC) const;
+
+	UFUNCTION(BlueprintCallable, Category="Bounds")
+	bool ComputeRenderBounds(UCameraComponent* RenderCamera, int32 RenderW, int32 RenderH, FScreenBox& OutBounds) const;
+
+	static bool ProjectWorldToRenderPx(const FVector& World, const FIntRect& ViewRect, const FMatrix& ViewProj, FVector2D& OutPx);
+	
 protected:
 	virtual void BeginPlay() override;
 

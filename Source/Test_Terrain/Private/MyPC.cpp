@@ -1,15 +1,23 @@
 #include "MyPC.h"
 
 #include "ObjectBoundsHUD.h"
+#include "Camera/CameraActor.h"
 #include "Kismet/GameplayStatics.h"
+
 
 void AMyPC::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
 	TArray<AActor*> Found;
+	TArray<AActor*> cam;
 	UGameplayStatics::GetAllActorsWithTag(GetWorld(), TEXT("BoundsTarget"), Found);
 
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACameraActor::StaticClass(), cam);
+
+	if (cam[0])
+		SetViewTargetWithBlend(cam[0]);
+	
 	UE_LOG(LogTemp, Warning, TEXT("Found %d bounds actors"), Found.Num());
 
 	if (Found.Num() == 0)

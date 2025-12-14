@@ -1,7 +1,8 @@
 #include "ScreenBoundsComponent.h"
 #include <cfloat>
 #include "Kismet/GameplayStatics.h"
-
+#include "SceneView.h"
+#include "Camera/CameraComponent.h"
 
 UScreenBoundsComponent::UScreenBoundsComponent()
 {
@@ -83,7 +84,7 @@ bool UScreenBoundsComponent::ComputeScreenBounds_Sync(
 			const FVector World = X.TransformPosition(CM.LocalVertices[i]);
 
 			FVector2D S;
-			if (PC->ProjectWorldLocationToScreen(World, S))
+			if (PC->ProjectWorldLocationToScreen(World, S, false))
 			{
 				OutBounds.Min.X = FMath::Min(OutBounds.Min.X, S.X);
 				OutBounds.Min.Y = FMath::Min(OutBounds.Min.Y, S.Y);
@@ -120,6 +121,77 @@ bool UScreenBoundsComponent::FastAABBTest(APlayerController* PC) const
 		return false;
 
 	return true;
+}
+
+bool UScreenBoundsComponent::ComputeRenderBounds(UCameraComponent* RenderCamera, int32 RenderW, int32 RenderH,
+                                                 FScreenBox& OutBounds) const
+{
+	OutBounds = FScreenBox();
+	
+    if (!RenderCamera || RenderW <= 0 || RenderH <= 0 || CachedMeshes.Num() == 0)
+        return false;
+
+    // 1) Камера
+    FMinimalViewInfo VI;
+    RenderCamera->GetCameraView(0.f, VI);
+
+    VI.AspectRatio = float(RenderW) / float(RenderH);
+    VI.bConstrainAspectRatio = true;
+
+	// 2) Строим projection matrix
+	const FMatrix Proj = VI.CalculateProjectionMatrix();
+
+	const FMatrix ViewRotationMatrix = FInverseRotationMatrix(VI.Rotation) *
+		FMatrix(
+			FPlane(0,0,1,0),
+			FPlane(1,0,0,0),
+			FPlane(0,1,0,0),
+			FPlane(0,0,0,1)
+		);
+
+    const FMatrix View = FTranslationMatrix(-VI.Location) * ViewRotationMatrix;
+	const FMatrix ViewProj = View * Proj;
+
+    // 3) ViewRotationMatrix
+    FSceneViewProjectionData ProjData;
+    ProjData.SetViewRectangle(FIntRect(0, 0, RenderW, RenderH));
+    ProjData.SetConstrainedViewRectangle(FIntRect(0, 0, RenderW, RenderH));
+
+    // 4) Rect рендера
+	const FIntRect ViewRect (0, 0, RenderW, RenderH);
+
+	const int32 Step = FMath::Max(1, VertexSampleStep);
+	bool bHasPoint = false;
+
+    for (const FCachedMeshData& CM : CachedMeshes)
+    {
+        if (!CM.MeshComp || CM.LocalVertices.Num() == 0)
+            continue;
+
+        const FTransform X = CM.MeshComp->GetComponentTransform();
+
+        for (int32 i = 0; i < CM.LocalVertices.Num(); i += Step)
+        {
+            const FVector World = X.TransformPosition(CM.LocalVertices[i]);
+
+            FVector2D Px;
+            if (FSceneView::ProjectWorldToScreen(World, ViewRect, ViewProj, Px))
+            {
+                if (FMath::IsFinite(Px.X) && FMath::IsFinite(Px.Y))
+                {
+                    OutBounds.IncludePoint(Px);
+                    bHasPoint = true;
+                }
+            }
+        }
+    }
+
+    return bHasPoint && OutBounds.IsValid();
+}
+
+bool UScreenBoundsComponent::ProjectWorldToRenderPx(const FVector& World, const FIntRect& ViewRect, const FMatrix& ViewProj, FVector2D& OutPx)
+{
+	return FSceneView::ProjectWorldToScreen(World, ViewRect, ViewProj, OutPx);
 }
 
 bool UScreenBoundsComponent::IsVisible(FScreenBox& OutBounds)
