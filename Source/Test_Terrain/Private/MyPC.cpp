@@ -3,7 +3,13 @@
 #include "ObjectBoundsHUD.h"
 #include "Camera/CameraActor.h"
 #include "Kismet/GameplayStatics.h"
+#include "DataCaptureController.h"
 
+AMyPC::AMyPC()
+{
+	BaseCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	RootComponent = BaseCamera;
+}
 
 void AMyPC::BeginPlay()
 {
@@ -15,11 +21,15 @@ void AMyPC::BeginPlay()
 
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACameraActor::StaticClass(), cam);
 
-	if (cam[0])
-		SetViewTargetWithBlend(cam[0]);
+	//if (cam[0])
+		//SetViewTargetWithBlend(cam[0]);
+	//Camera = Cast<UCameraComponent>(cam[0]->GetComponentByClass(UCameraComponent::StaticClass()));
+	
 	
 	UE_LOG(LogTemp, Warning, TEXT("Found %d bounds actors"), Found.Num());
 
+	Init();
+	
 	if (Found.Num() == 0)
 		return;
 
@@ -42,4 +52,11 @@ void AMyPC::BeginPlay()
 				*Target->GetName());
 		}
 	}
+}
+
+void AMyPC::Init()
+{
+	// DataCapture = GetWorld()->SpawnActor<ADataCaptureController>(DataCaptureController);
+	// DataCapture->Init(BaseCamera);
+	// UE_LOG(LogTemp, Warning, TEXT("Spawn %s"), *DataCapture->GetName());
 }

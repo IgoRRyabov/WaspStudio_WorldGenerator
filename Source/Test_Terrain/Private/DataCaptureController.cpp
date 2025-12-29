@@ -10,6 +10,7 @@ ADataCaptureController::ADataCaptureController()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
+	CameraControllerComponent = CreateDefaultSubobject<UCameraControllerComponent>(TEXT("CameraControllerComponent"));
 }
 
 void ADataCaptureController::BeginPlay()
@@ -23,18 +24,29 @@ void ADataCaptureController::BeginPlay()
 		return;
 	}
 
-	if (RenderCameraActor)
-	{
-		RenderCamera = RenderCameraActor->FindComponentByClass<UCameraComponent>();
-		//MyPC->SetViewTargetWithBlend(RenderCameraActor);
-	}
-
 	if (!MyPC || !RenderCamera)
 	{
 		UE_LOG(LogTemp, Error, TEXT("PC or RenderCamera not set"));
 	}
+	
+	if (!CameraActor)
+	{
+		UE_LOG(LogTemp, Error, TEXT("RenderCameraActor is NOT assigned"));
+		return;
+	}
+	
+	if (CameraControllerComponent)
+	{
+		CameraControllerComponent->Init(CameraActor, TargetSceneActor);
+		CameraControllerComponent->UpdateCameraTransform();
+	}
 }
 
+void ADataCaptureController::UpdateCameraTransform()
+{
+	if (CameraControllerComponent)
+		CameraControllerComponent->UpdateCameraTransform();
+}
 
 
 void ADataCaptureController::NotifyRenderFinished()
@@ -56,6 +68,7 @@ void ADataCaptureController::CaptureAndRenderOneFrame()
 		UE_LOG(LogTemp, Warning, TEXT("Capture finished: %d shots"), NumShots);
 		return;
 	}
+	RenderCamera = CameraActor->GetCameraComponent();
 
 	const FString FrameBaseName = FString::Printf(TEXT("frame_%05d"), CurrentShot);
 
@@ -73,7 +86,7 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 
 	FString Txt;
 	Txt.Reserve(Actors.Num() * 64);
-
+	
 	int32 Saved = 0;
 
 	for (AActor* A : Actors)
@@ -82,9 +95,9 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 
 		UScreenBoundsComponent* Bounds = A->FindComponentByClass<UScreenBoundsComponent>();
 		if (!Bounds) continue;
-
+		
 		FScreenBox Box;
-		if (!Bounds->ComputeRenderBoundsFromCamera(RenderCamera, RenderW, RenderH, Box))
+		if (!Bounds->ComputeBoundsFromCamera(RenderCamera, RenderW, RenderH, Box))
 			continue;
 
 		// clamp в пределах рендера
@@ -111,5 +124,6 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 	const FString FullPath = FPaths::Combine(OutputDir, FrameBaseName + TEXT(".txt"));
 	FFileHelper::SaveStringToFile(Txt, *FullPath, FFileHelper::EEncodingOptions::ForceUTF8);
 
+	UE_LOG(LogTemp, Warning, TEXT("Camera Render Pos = %f, %f, %f"), RenderCamera->GetComponentLocation().X, RenderCamera->GetComponentLocation().Y, RenderCamera->GetComponentLocation().Z);
 	UE_LOG(LogTemp, Warning, TEXT("[Dataset] %s: saved %d boxes"), *FrameBaseName, Saved);
 }

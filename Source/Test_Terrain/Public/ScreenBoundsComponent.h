@@ -1,8 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Camera/CameraComponent.h"
 #include "Components/ActorComponent.h"
+#include "Camera/CameraComponent.h"
 #include "ScreenBoundsComponent.generated.h"
 
 USTRUCT()
@@ -23,16 +23,16 @@ struct FScreenBox
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly) FVector2D Min = FVector2D(FLT_MAX, FLT_MAX);
-	UPROPERTY(BlueprintReadOnly) FVector2D Max = FVector2D(-FLT_MAX, -FLT_MAX);
+	FVector2D Min = FVector2D(FLT_MAX, FLT_MAX);
+	FVector2D Max = FVector2D(-FLT_MAX, -FLT_MAX);
 
-	FORCEINLINE void Reset()
+	void Reset()
 	{
 		Min = FVector2D(FLT_MAX, FLT_MAX);
 		Max = FVector2D(-FLT_MAX, -FLT_MAX);
 	}
 
-	FORCEINLINE void IncludePoint(const FVector2D& P)
+	void Include(const FVector2D& P)
 	{
 		Min.X = FMath::Min(Min.X, P.X);
 		Min.Y = FMath::Min(Min.Y, P.Y);
@@ -40,13 +40,9 @@ struct FScreenBox
 		Max.Y = FMath::Max(Max.Y, P.Y);
 	}
 
-	FORCEINLINE bool IsValid() const
+	bool IsValid() const
 	{
-		return Min.X <= Max.X && Min.Y <= Max.Y
-			&& FMath::IsFinite(Min.X) && FMath::IsFinite(Min.Y)
-			&& FMath::IsFinite(Max.X) && FMath::IsFinite(Max.Y)
-			&& Min.X != FLT_MAX && Min.Y != FLT_MAX
-			&& Max.X != -FLT_MAX && Max.Y != -FLT_MAX;
+		return Max.X > Min.X && Max.Y > Min.Y;
 	}
 };
 
@@ -58,24 +54,19 @@ class TEST_TERRAIN_API UScreenBoundsComponent : public UActorComponent
 public:
 	UScreenBoundsComponent();
 
-	// Сэмплинг: 1 = все вершины, 2 = каждая 2-я, 4 = каждая 4-я и т.д.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds")
+	UPROPERTY(EditAnywhere, Category="Bounds")
 	int32 VertexSampleStep = 4;
 
-	/** БЫСТРЫЙ тест: объект не позади камеры. */
-	UFUNCTION(BlueprintCallable, Category="Bounds")
-	bool FastAABBTest_FromCamera(UCameraComponent* Camera) const;
-
-	/** Старый вариант: bbox относительно viewport (как у тебя в HUD). */
-	UFUNCTION(BlueprintCallable, Category="Bounds")
-	bool ComputeViewportBounds(FScreenBox& OutBounds) const;
-
 	/**
-	 * ВАЖНОЕ: bbox относительно РЕНДЕРА RenderW×RenderH, от конкретной камеры рендера.
-	 * Начало координат = верхний левый угол.
+	 * ГЛАВНАЯ ФУНКЦИЯ
+	 * @return true — объект реально попал в кадр
 	 */
-	UFUNCTION(BlueprintCallable, Category="Bounds")
-	bool ComputeRenderBoundsFromCamera(UCameraComponent* RenderCamera, int32 RenderW, int32 RenderH, FScreenBox& OutBounds) const;
+	bool ComputeBoundsFromCamera(
+		UCameraComponent* Camera,
+		int32 RenderW,
+		int32 RenderH,
+		FScreenBox& OutBounds
+	) const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -85,12 +76,12 @@ private:
 	TArray<FCachedMeshData> CachedMeshes;
 
 private:
-	static bool ProjectWorldToRenderPx(
+	static FMatrix BuildViewProjection(UCameraComponent* Camera, int32 W, int32 H);
+	static bool ProjectWorldToPixel(
 		const FVector& World,
 		const FMatrix& ViewProj,
-		int32 RenderW,
-		int32 RenderH,
-		FVector2D& OutPx);
-
-	static FMatrix BuildViewProjectionMatrixFromCamera(UCameraComponent* Cam, int32 RenderW, int32 RenderH);
+		int32 W,
+		int32 H,
+		FVector2D& OutPx
+	);
 };

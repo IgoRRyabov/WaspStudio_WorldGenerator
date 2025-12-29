@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CameraControllerComponent.h"
 #include "MyPC.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Actor.h"
@@ -24,7 +25,16 @@ public:
 	// BP реализует: запускает MoviePipeline рендер одного кадра
 	UFUNCTION(BlueprintImplementableEvent, Category="Dataset")
 	void StartRenderImage(AMyPC* PC, int32 InRenderW, int32 InRenderH, const FString& FrameBaseName);
+	
+	UFUNCTION(BlueprintCallable)
+	void UpdateCameraTransform();
 
+	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category="Render")
+	ACameraActor* CameraActor = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Render")
+	AActor* TargetSceneActor = nullptr;
+	
 	// BP должен вызвать это, когда кадр отрендерен
 	UFUNCTION(BlueprintCallable, Category="Dataset")
 	void NotifyRenderFinished();
@@ -44,17 +54,23 @@ public:
 	UPROPERTY(EditAnywhere, Category="Dataset")
 	int32 NumShots = 1;
 
-	UPROPERTY(EditAnywhere, Category="Dataset")
-	ACameraActor* RenderCameraActor = nullptr;
-
 	UFUNCTION(BlueprintCallable)
 	void Start();
+	
+	void Init(UCameraComponent* CamComp) {RenderCamera = CamComp;};
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dataset")
+	UCameraComponent* RenderCamera = nullptr;
+	
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dataset")
+	UCameraControllerComponent* CameraControllerComponent = nullptr;
+	
 private:
 	UPROPERTY()
 	AMyPC* MyPC = nullptr;
 
-	UPROPERTY()
-	UCameraComponent* RenderCamera = nullptr;
+	
 	
 	int32 CurrentShot = 0;
 
