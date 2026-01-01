@@ -27,6 +27,10 @@ public:
 	
 	UFUNCTION()
 	void SetActor(AActor* TargetActor) {SelectedActor = TargetActor;};
+	
+	UFUNCTION()
+	int GetMaxShot() const {return MaxShot;};
+
 protected:
 	virtual void BeginPlay() override;
 

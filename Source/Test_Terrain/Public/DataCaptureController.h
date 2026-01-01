@@ -63,7 +63,7 @@ public:
 	UCameraComponent* RenderCamera = nullptr;
 	
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dataset")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Render")
 	UCameraControllerComponent* CameraControllerComponent = nullptr;
 	
 private:

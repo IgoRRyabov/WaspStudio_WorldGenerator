@@ -52,6 +52,7 @@ void ADataCaptureController::UpdateCameraTransform()
 void ADataCaptureController::NotifyRenderFinished()
 {
 	CurrentShot++;
+	UpdateCameraTransform();
 	CaptureAndRenderOneFrame();
 }
 
@@ -63,9 +64,9 @@ void ADataCaptureController::Start()
 
 void ADataCaptureController::CaptureAndRenderOneFrame()
 {
-	if (CurrentShot >= NumShots)
+	if (CurrentShot >= CameraControllerComponent->GetMaxShot())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Capture finished: %d shots"), NumShots);
+		UE_LOG(LogTemp, Warning, TEXT("Capture finished: %d shots"), CameraControllerComponent->GetMaxShot());
 		return;
 	}
 	RenderCamera = CameraActor->GetCameraComponent();
