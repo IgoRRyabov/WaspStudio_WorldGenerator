@@ -12,6 +12,12 @@ class TEST_TERRAIN_API ATargetActor : public AActor
 	
 public:	
 	ATargetActor();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
+	int ObjectID = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
+	int StateObject = 0;
 
 protected:
 	virtual void BeginPlay() override;

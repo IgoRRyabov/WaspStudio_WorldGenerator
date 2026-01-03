@@ -39,6 +39,8 @@ void UCameraControllerComponent::UpdateCameraTransform()
 	CurrentShot++;
 }
 
+
+
 void UCameraControllerComponent::BeginPlay()
 {
 	Super::BeginPlay();

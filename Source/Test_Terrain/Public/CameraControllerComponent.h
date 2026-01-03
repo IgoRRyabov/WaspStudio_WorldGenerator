@@ -31,6 +31,8 @@ public:
 	UFUNCTION()
 	int GetMaxShot() const {return MaxShot;};
 
+	UFUNCTION()
+	int GetMaxShotOneObjects() const {return MaxShotOneObjects;};
 protected:
 	virtual void BeginPlay() override;
 
@@ -39,6 +41,9 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
 	int MaxShot = 10;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
+	int MaxShotOneObjects = 2;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
 	float OrbitRadius = 1500.f;

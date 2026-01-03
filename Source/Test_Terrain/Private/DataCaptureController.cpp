@@ -3,6 +3,7 @@
 #include "Misc/Paths.h"
 #include "HAL/PlatformFileManager.h"
 #include "ScreenBoundsComponent.h"
+#include "TargetActor.h"
 #include "Camera/CameraActor.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -23,7 +24,8 @@ void ADataCaptureController::BeginPlay()
 		UE_LOG(LogTemp, Error, TEXT("DataCaptureController: MyPC not found"));
 		return;
 	}
-
+	
+	
 	if (!MyPC || !RenderCamera)
 	{
 		UE_LOG(LogTemp, Error, TEXT("PC or RenderCamera not set"));
@@ -38,7 +40,8 @@ void ADataCaptureController::BeginPlay()
 	if (CameraControllerComponent)
 	{
 		CameraControllerComponent->Init(CameraActor, TargetSceneActor);
-		CameraControllerComponent->UpdateCameraTransform();
+		NextActor();
+		//CameraControllerComponent->UpdateCameraTransform();
 	}
 }
 
@@ -52,6 +55,7 @@ void ADataCaptureController::UpdateCameraTransform()
 void ADataCaptureController::NotifyRenderFinished()
 {
 	CurrentShot++;
+	LocalCurrentShot++;
 	UpdateCameraTransform();
 	CaptureAndRenderOneFrame();
 }
@@ -59,6 +63,8 @@ void ADataCaptureController::NotifyRenderFinished()
 void ADataCaptureController::Start()
 {
 	CurrentShot = 0;
+	LocalCurrentShot = 0;
+	NextActor();
 	CaptureAndRenderOneFrame();
 }
 
@@ -69,6 +75,13 @@ void ADataCaptureController::CaptureAndRenderOneFrame()
 		UE_LOG(LogTemp, Warning, TEXT("Capture finished: %d shots"), CameraControllerComponent->GetMaxShot());
 		return;
 	}
+	
+	if (LocalCurrentShot >= CameraControllerComponent->GetMaxShotOneObjects())
+	{
+		NextActor();
+		LocalCurrentShot = 0;
+	}
+	
 	RenderCamera = CameraActor->GetCameraComponent();
 
 	const FString FrameBaseName = FString::Printf(TEXT("frame_%05d"), CurrentShot);
@@ -82,14 +95,13 @@ void ADataCaptureController::CaptureAndRenderOneFrame()
 
 void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName)
 {
-	TArray<AActor*> Actors;
-	UGameplayStatics::GetAllActorsWithTag(GetWorld(), DetectionTag, Actors);
-
 	FString Txt;
 	Txt.Reserve(Actors.Num() * 64);
 	
 	int32 Saved = 0;
 
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), DetectionTag, Actors);
+	
 	for (AActor* A : Actors)
 	{
 		if (!IsValid(A)) continue;
@@ -115,7 +127,9 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 		const int32 MaxX = FMath::RoundToInt(Box.Max.X);
 		const int32 MaxY = FMath::RoundToInt(Box.Max.Y);
 
-		Txt += FString::Printf(TEXT("%s %d %d %d %d\n"), *A->GetName(), MinX, MinY, MaxX, MaxY);
+		ATargetActor* TA = Cast<ATargetActor>(A);
+		
+		Txt += FString::Printf(TEXT("class1_%d, class2_%d, %d, %d, %d, %d\n"), TA->ObjectID, TA->StateObject, MinX, MinY, MaxX, MaxY);
 		++Saved;
 	}
 
@@ -127,4 +141,18 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 
 	UE_LOG(LogTemp, Warning, TEXT("Camera Render Pos = %f, %f, %f"), RenderCamera->GetComponentLocation().X, RenderCamera->GetComponentLocation().Y, RenderCamera->GetComponentLocation().Z);
 	UE_LOG(LogTemp, Warning, TEXT("[Dataset] %s: saved %d boxes"), *FrameBaseName, Saved);
+}
+
+void ADataCaptureController::NextActor()
+{
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), DetectionTag, AllActors);
+	
+	if (AllActors.Num() == 0) return;
+	if (!AllActors[NumActors]) NumActors = 0;
+	
+	if (CameraControllerComponent)
+		CameraControllerComponent->SetActor(AllActors[NumActors]);
+	UpdateCameraTransform();
+	
+	NumActors++;
 }

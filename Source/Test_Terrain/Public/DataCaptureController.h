@@ -41,7 +41,7 @@ public:
 
 	UPROPERTY(EditAnywhere, Category="Dataset")
 	FName DetectionTag = "Detectable";
-
+	
 	UPROPERTY(EditAnywhere, Category="Dataset")
 	FString OutputDir = TEXT("C:/Dataset");
 
@@ -68,12 +68,20 @@ protected:
 	
 private:
 	UPROPERTY()
-	AMyPC* MyPC = nullptr;
-
+	TArray<AActor*> Actors;
 	
+	UPROPERTY()
+	TArray<AActor*> AllActors;
+	
+	UPROPERTY()
+	AMyPC* MyPC = nullptr;
 	
 	int32 CurrentShot = 0;
+	int32 LocalCurrentShot = 0;
 
 	void CaptureAndRenderOneFrame();
 	void SaveTxtForCurrentFrame(const FString& FrameBaseName);
+
+	void NextActor();
+	int32 NumActors = 0;
 };
