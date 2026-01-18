@@ -10,9 +10,9 @@ public class Test_TerrainTarget : TargetRules
 		Type = TargetType.Editor;
 
 		DefaultBuildSettings = BuildSettingsVersion.V6;
-		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
+		//IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 
-		BuildEnvironment = TargetBuildEnvironment.Unique;
+		//BuildEnvironment = TargetBuildEnvironment.Unique;
 
 		ExtraModuleNames.AddRange(new string[] { "Test_Terrain" });
 	}
