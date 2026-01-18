@@ -1,4 +1,6 @@
 #include "DataCaptureController.h"
+
+#include "MyGameInstance.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "HAL/PlatformFileManager.h"
@@ -25,6 +27,12 @@ void ADataCaptureController::BeginPlay()
 		return;
 	}
 	
+	GI = GetGameInstance<UMyGameInstance>();
+	if (!GI)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("VehicleSpawnManager: GameInstance cast failed."));
+		return;
+	}
 	
 	if (!MyPC || !RenderCamera)
 	{
@@ -43,6 +51,20 @@ void ADataCaptureController::BeginPlay()
 		NextActor();
 		//CameraControllerComponent->UpdateCameraTransform();
 	}
+	
+	SetParams();
+}
+
+void ADataCaptureController::SetParams() const
+{
+	CameraControllerComponent->MaxShot = GI->VehicleSpawnSettings.MaxShot;
+	CameraControllerComponent->OrbitHeightMin = GI->VehicleSpawnSettings.OrbitHeightMin;
+	CameraControllerComponent->OrbitHeightMax = GI->VehicleSpawnSettings.OrbitHeightMax;
+	CameraControllerComponent->OrbitRadiusMin = GI->VehicleSpawnSettings.OrbitRadiusMin;
+	CameraControllerComponent->OrbitRadiusMax = GI->VehicleSpawnSettings.OrbitRadiusMax;
+	CameraControllerComponent->JitterDegrees = GI->VehicleSpawnSettings.JitterDegrees;
+	CameraControllerComponent->JitterLocation = GI->VehicleSpawnSettings.JitterLocation;
+	CameraControllerComponent->MaxShotOneObjects = GI->VehicleSpawnSettings.MaxShotOneObjects;
 }
 
 void ADataCaptureController::UpdateCameraTransform()

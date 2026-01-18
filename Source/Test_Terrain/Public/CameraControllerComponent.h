@@ -39,6 +39,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
 	int CurrentShot = 0;
 	
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
 	int MaxShot = 10;
 	
@@ -46,15 +47,21 @@ protected:
 	int MaxShotOneObjects = 2;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
-	float OrbitRadius = 1500.f;
+	float OrbitRadiusMin = 1300.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
-	float OrbitHeight = 800.f;
+	float OrbitRadiusMax = 1800.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
-	float JitterDegrees = 12.f;
+	float OrbitHeightMin = 7500.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
+	float OrbitHeightMax = 9200.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera",meta = (ClampMin="0.0", ClampMax="7.5"))
+	float JitterDegrees = 5.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera",meta = (ClampMin="0.0", ClampMax="500"))
 	float JitterLocation = 150.f;
 	
 private:

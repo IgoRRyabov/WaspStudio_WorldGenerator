@@ -7,9 +7,13 @@ public class Test_TerrainTarget : TargetRules
 {
 	public Test_TerrainTarget(TargetInfo Target) : base(Target)
 	{
-		Type = TargetType.Game;
-		DefaultBuildSettings = BuildSettingsVersion.V5;
+		Type = TargetType.Editor;
 
-		ExtraModuleNames.AddRange( new string[] { "Test_Terrain" } );
+		DefaultBuildSettings = BuildSettingsVersion.V6;
+		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
+
+		BuildEnvironment = TargetBuildEnvironment.Unique;
+
+		ExtraModuleNames.AddRange(new string[] { "Test_Terrain" });
 	}
 }

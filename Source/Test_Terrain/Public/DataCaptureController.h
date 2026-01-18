@@ -8,6 +8,7 @@
 #include "DataCaptureController.generated.h"
 
 
+class UMyGameInstance;
 class ACameraActor;
 class UMoviePipelineQueue;
 class UScreenBoundsComponent;
@@ -84,4 +85,9 @@ private:
 
 	void NextActor();
 	int32 NumActors = 0;
+	
+	UPROPERTY()
+	UMyGameInstance* GI;
+	
+	void SetParams() const;
 };

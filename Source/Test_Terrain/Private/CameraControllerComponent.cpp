@@ -19,19 +19,22 @@ void UCameraControllerComponent::UpdateCameraTransform()
 	const FVector Center = SelectedActor->GetActorLocation();
 	const float Rad = FMath::DegreesToRadians(AngleDeg);
 	
+	float OrbitHeight = FMath::FRandRange(OrbitHeightMin, OrbitHeightMax);
+	float OrbitRadius = FMath::FRandRange(OrbitRadiusMin, OrbitRadiusMax);
+	
 	FVector Pos;
 	Pos.X = Center.X + FMath::Cos(Rad) * OrbitRadius;
 	Pos.Y = Center.Y + FMath::Sin(Rad) * OrbitRadius;
 	Pos.Z = Center.Z + OrbitHeight;
 	
 	Pos += FVector{
-	FMath::RandRange(-JitterLocation, JitterLocation),
-	FMath::RandRange(-JitterLocation, JitterLocation),
-	FMath::RandRange(-JitterLocation * 0.5f, JitterLocation) * 0.5f};
+	FMath::FRandRange(-JitterLocation, JitterLocation),
+	FMath::FRandRange(-JitterLocation, JitterLocation),
+	FMath::FRandRange(-JitterLocation * 0.5f, JitterLocation) * 0.5f};
 	
 	FRotator LookAtRotator = UKismetMathLibrary::FindLookAtRotation(Pos, Center);
-	LookAtRotator.Yaw += FMath::RandRange(-JitterDegrees, JitterDegrees);
-	LookAtRotator.Pitch += FMath::RandRange(-JitterDegrees, JitterDegrees);
+	LookAtRotator.Yaw += FMath::FRandRange(-JitterDegrees, JitterDegrees);
+	LookAtRotator.Pitch += FMath::FRandRange(-JitterDegrees, JitterDegrees);
 	
 	BaseCamera->SetActorLocation(Pos);
 	BaseCamera->SetActorRotation(LookAtRotator);
