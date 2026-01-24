@@ -95,6 +95,7 @@ void ADataCaptureController::CaptureAndRenderOneFrame()
 	if (CurrentShot >= CameraControllerComponent->GetMaxShot())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Capture finished: %d shots"), CameraControllerComponent->GetMaxShot());
+		FinishRender();
 		return;
 	}
 	

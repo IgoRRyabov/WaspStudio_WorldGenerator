@@ -27,6 +27,9 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Dataset")
 	void StartRenderImage(AMyPC* PC, int32 InRenderW, int32 InRenderH, const FString& FrameBaseName);
 	
+	UFUNCTION(BlueprintImplementableEvent, Category="Dataset")
+	void FinishRender();
+	
 	UFUNCTION(BlueprintCallable)
 	void UpdateCameraTransform();
 
