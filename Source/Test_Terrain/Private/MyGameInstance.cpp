@@ -60,6 +60,8 @@ bool UMyGameInstance::LoadVehicleSettingsFromJson()
 		return false;
 	}
 
+	if (VehicleSpawnSettings.VersionSave != Loaded.VersionSave) return false;
+	
 	VehicleSpawnSettings = Loaded;
 	UE_LOG(LogTemp, Log, TEXT("Settings loaded: %s"), *Path);
 	return true;

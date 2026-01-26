@@ -1,4 +1,6 @@
 #include "ScreenBoundsComponent.h"
+
+#include "MyGameInstance.h"
 #include "Engine/StaticMesh.h"
 #include "StaticMeshResources.h"
 #include "SceneView.h"
@@ -98,6 +100,10 @@ void UScreenBoundsComponent::BeginPlay()
 	Super::BeginPlay();
 
 	CachedMeshes.Reset();
+	
+	const auto GI = GetWorld()->GetGameInstance<UMyGameInstance>();
+	
+	VertexSampleStep = GI->VehicleSpawnSettings.VertexSampleStep;
 
 	TArray<UActorComponent*> Comps;
 	GetOwner()->GetComponents(Comps);

@@ -59,6 +59,11 @@ struct FVehicleSpawnSettings
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spawn")
 	int32 Seed = 9992;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spawn")
+	int32 VertexSampleStep = 4;
+	
+	int32 VersionSave = 1;
 };
 
 
