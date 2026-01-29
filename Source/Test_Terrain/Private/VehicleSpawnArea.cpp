@@ -22,7 +22,7 @@ void AVehicleSpawnArea::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (!VehicleClass || !GetWorld())
+	if (VehicleClass.IsEmpty() || !GetWorld())
 		return;
 	
 	GI = GetGameInstance<UMyGameInstance>();
@@ -45,7 +45,7 @@ void AVehicleSpawnArea::CalculatePosition()
 
 void AVehicleSpawnArea::TrySpawnOne()
 {
-	if (!VehicleClass || !GetWorld() || !GI) return;
+	if (VehicleClass.IsEmpty() || !GetWorld() || !GI) return;
 
 	const float MinDist = GI->VehicleSpawnSettings.MinDistanceBetweenCenters * 100;               // лучше брать из настроек
 	const float MinDistSq = FMath::Square(MinDist);
@@ -85,7 +85,9 @@ void AVehicleSpawnArea::TrySpawnOne()
 	float RandOffset = UKismetMathLibrary::RandomFloatInRange(0, 30.f);
 	RandomRot.Yaw += RandOffset;
 	
-	ATargetActor* Vehicle = GetWorld()->SpawnActor<ATargetActor>(VehicleClass, Loc, RandomRot, Params);
+	int count = UKismetMathLibrary::RandomIntegerInRange(0, VehicleClass.Num() - 1);
+	
+	ATargetActor* Vehicle = GetWorld()->SpawnActor<ATargetActor>(VehicleClass[count], Loc, RandomRot, Params);
 	if (!Vehicle) return;
 
 	SpawnedPointsWorld.Add(Loc);

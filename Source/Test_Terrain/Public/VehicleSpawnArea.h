@@ -20,7 +20,7 @@ public:
 
 	// Класс техники (Actor/Pawn — не важно)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spawn")
-	TSubclassOf<AActor> VehicleClass;
+	TArray<TSubclassOf<AActor>> VehicleClass;
 
 protected:
 	virtual void BeginPlay() override;
