@@ -7,10 +7,9 @@ public class Test_TerrainTarget : TargetRules
 {
 	public Test_TerrainTarget(TargetInfo Target) : base(Target)
 	{
-		Type = TargetType.Editor;
-
+		Type = TargetType.Game;
 		DefaultBuildSettings = BuildSettingsVersion.V6;
-		//IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
+		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 
 		//BuildEnvironment = TargetBuildEnvironment.Unique;
 

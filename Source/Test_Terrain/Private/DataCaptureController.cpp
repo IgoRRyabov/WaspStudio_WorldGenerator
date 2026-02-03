@@ -52,6 +52,9 @@ void ADataCaptureController::BeginPlay()
 		//CameraControllerComponent->UpdateCameraTransform();
 	}
 	
+	FString GameFolder = GI->GameRootDir;
+	OutputDir = GameFolder;
+	
 	SetParams();
 }
 
@@ -152,11 +155,27 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 
 		ATargetActor* TA = Cast<ATargetActor>(A);
 		
-		Txt += FString::Printf(TEXT("class1_%d, class2_%d, %d, %d, %d, %d\n"), TA->ObjectID, TA->StateObject, MinX, MinY, MaxX, MaxY);
+		FString DirTA = TA->FolderId;
+		FString GameFolder = GI->GameRootDir;
+		
+		FString Path = FPaths::Combine(GameFolder, DirTA);
+		FString FinalPath = FPaths::Combine(Path, TEXT("params.txt"));
+		
+		FString Text;
+		if (FFileHelper::LoadFileToString(Text, *FinalPath))
+		{
+			Txt += FString::Printf(TEXT("%s, %d, %d, %d, %d\n"), *Text, MinX, MinY, MaxX, MaxY);
+		}else
+		{
+			Txt += FString::Printf(TEXT("class1_%d, class2_%d, %d, %d, %d, %d\n"), TA->ObjectID, TA->StateObject, MinX, MinY, MaxX, MaxY);
+		}
+		
+		
 		++Saved;
 	}
 
 	IPlatformFile& PF = FPlatformFileManager::Get().GetPlatformFile();
+	
 	PF.CreateDirectoryTree(*OutputDir);
 
 	const FString FullPath = FPaths::Combine(OutputDir, FrameBaseName + TEXT(".txt"));
@@ -168,7 +187,8 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 
 void ADataCaptureController::NextActor()
 {
-	UGameplayStatics::GetAllActorsWithTag(GetWorld(), DetectionTag, AllActors);
+	//UGameplayStatics::GetAllActorsWithTag(GetWorld(), DetectionTag, AllActors);
+	if (AllActors.IsEmpty()) UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATargetActor::StaticClass(), AllActors);
 	
 	if (AllActors.Num() == 0) return;
 	if (!AllActors[NumActors]) NumActors = 0;

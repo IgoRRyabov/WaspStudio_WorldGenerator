@@ -84,6 +84,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Settings")
 	bool LoadVehicleSettingsFromJson();
 
+	UFUNCTION()
+	FString GetGameRootDir();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Data")
+	FString GameRootDir;
+	
 private:
-	FString GetSettingsFilePath() const;
+	static FString GetSettingsFilePath();
 };

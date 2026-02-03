@@ -19,9 +19,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Parameters")
 	int StateObject = 0;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="UserData")
+	FString FolderId = TEXT("Folder");
 protected:
 	virtual void BeginPlay() override;
-
+	
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* MeshComp;
 
