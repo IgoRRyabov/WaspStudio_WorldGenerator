@@ -1,0 +1,23 @@
+# Временные файлы сборки
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+*.sln
+*.opensdf
+*.sdf
+*.VC.db
+*.suo
+*.xcodeproj
+*.xcworkspace
+
+# Продукты сборки
+Build/
+
+# Файлы проекта VS
+*.vcxproj
+*.vcxproj.filters
+
+# Прочие
+*.DotSettings
+.vscode/
