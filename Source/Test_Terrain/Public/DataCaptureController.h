@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "CameraControllerComponent.h"
 #include "MyPC.h"
+#include "ScreenBoundsComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Actor.h"
 #include "DataCaptureController.generated.h"
@@ -66,6 +67,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dataset")
 	UCameraComponent* RenderCamera = nullptr;
 	
+	UFUNCTION()
+	static bool IsBoxAtLeastVisiblePercent(const FScreenBox& Box, int32 W, int32 H, float MinPercent);
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Render")
 	UCameraControllerComponent* CameraControllerComponent = nullptr;

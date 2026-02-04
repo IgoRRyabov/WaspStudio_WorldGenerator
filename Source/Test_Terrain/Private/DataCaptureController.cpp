@@ -6,6 +6,7 @@
 #include "HAL/PlatformFileManager.h"
 #include "ScreenBoundsComponent.h"
 #include "TargetActor.h"
+#include "VectorUtil.h"
 #include "Camera/CameraActor.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -93,6 +94,24 @@ void ADataCaptureController::Start()
 	CaptureAndRenderOneFrame();
 }
 
+bool ADataCaptureController::IsBoxAtLeastVisiblePercent(const FScreenBox& Box, int32 W, int32 H, float MinPercent)
+{
+	if (!Box.IsValid()) return false;
+	
+	const float FullArea = Box.Area();
+	if (FullArea <= KINDA_SMALL_NUMBER) return false;
+	
+	const FScreenBox Clamped = Box.IntersectRender(W,H);
+	if (!Clamped.IsValid()) return false;
+	
+	const float VisibleArea = Clamped.Area();
+	const float Ratio = VisibleArea / FullArea;
+	
+	UE_LOG(LogTemp, Warning, TEXT("Ratio: %f"), Ratio);
+	
+	return Ratio >= MinPercent;
+}
+
 void ADataCaptureController::CaptureAndRenderOneFrame()
 {
 	if (CurrentShot >= CameraControllerComponent->GetMaxShot())
@@ -144,7 +163,7 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 		Box.Min.Y = FMath::Clamp(Box.Min.Y, 0.f, float(RenderH - 1));
 		Box.Max.X = FMath::Clamp(Box.Max.X, 0.f, float(RenderW - 1));
 		Box.Max.Y = FMath::Clamp(Box.Max.Y, 0.f, float(RenderH - 1));
-
+		
 		if (!Box.IsValid())
 			continue;
 
@@ -152,7 +171,7 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 		const int32 MinY = FMath::RoundToInt(Box.Min.Y);
 		const int32 MaxX = FMath::RoundToInt(Box.Max.X);
 		const int32 MaxY = FMath::RoundToInt(Box.Max.Y);
-
+		
 		ATargetActor* TA = Cast<ATargetActor>(A);
 		
 		FString DirTA = TA->FolderId;
@@ -167,7 +186,7 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 			Txt += FString::Printf(TEXT("%s, %d, %d, %d, %d\n"), *Text, MinX, MinY, MaxX, MaxY);
 		}else
 		{
-			Txt += FString::Printf(TEXT("class1_%d, class2_%d, %d, %d, %d, %d\n"), TA->ObjectID, TA->StateObject, MinX, MinY, MaxX, MaxY);
+			Txt += FString::Printf(TEXT("class1_%d, class2_%d, %d, %d, %d, %d\n"), TA->ObjectID, TA->StateObject,  MinX, MinY, MaxX, MaxY);
 		}
 		
 		

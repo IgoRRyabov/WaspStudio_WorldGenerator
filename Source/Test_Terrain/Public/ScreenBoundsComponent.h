@@ -39,6 +39,22 @@ struct FScreenBox
 		Max.X = FMath::Max(Max.X, P.X);
 		Max.Y = FMath::Max(Max.Y, P.Y);
 	}
+	
+	FORCEINLINE float Area() const
+	{
+		if (!IsValid()) return 0.0f;
+		return (Max.X - Min.X) * (Max.Y - Min.Y);
+	}
+	
+	FScreenBox IntersectRender(int32 W, int32 H) const
+	{
+		FScreenBox R;
+		R.Min.X = FMath::Clamp(Min.X, 0.f, float(W));
+		R.Min.Y = FMath::Clamp(Min.Y, 0.f, float(H));
+		R.Max.X = FMath::Clamp(Max.X, 0.f, float(W));
+		R.Max.Y = FMath::Clamp(Max.Y, 0.f, float(H));
+		return R;
+	}
 
 	bool IsValid() const
 	{
@@ -68,6 +84,18 @@ public:
 		FScreenBox& OutBounds
 	) const;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Filter")
+	float MinInFrameBBoxRatio = 0.5f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Filter")
+	float MinVisibleAreaPx = 900.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Filter")
+	float MinVisibleWidthPx = 20.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Filter")
+	float MinVisibleHeightPx = 20.f;
+	
 protected:
 	virtual void BeginPlay() override;
 

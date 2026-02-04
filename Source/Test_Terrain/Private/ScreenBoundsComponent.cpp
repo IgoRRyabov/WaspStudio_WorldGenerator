@@ -18,10 +18,19 @@ bool UScreenBoundsComponent::ComputeBoundsFromCamera(UCameraComponent* Camera, i
 	if (!Camera || RenderW <= 0 || RenderH <= 0)
 		return false;
 
+	// ДВА бокса:
+	// 1) FullBox - проекция объекта в пикселях (может выходить за экран)
+	// 2) InFrameBox - только то, что реально попало в кадр
+	FScreenBox FullBox;
+	FScreenBox InFrameBox;
+	FullBox.Reset();
+	InFrameBox.Reset();
+
 	const FMatrix VP = BuildViewProjection(Camera, RenderW, RenderH);
 	const int32 Step = FMath::Max(1, VertexSampleStep);
 
-	bool bHasVisiblePoint = false;
+	bool bHasAnyProjected = false;
+	bool bHasAnyInFrame = false;
 
 	for (const FCachedMeshData& CM : CachedMeshes)
 	{
@@ -35,22 +44,68 @@ bool UScreenBoundsComponent::ComputeBoundsFromCamera(UCameraComponent* Camera, i
 			const FVector World = X.TransformPosition(CM.LocalVertices[i]);
 
 			FVector2D Px;
-			if (ProjectWorldToPixel(World, VP, RenderW, RenderH, Px))
+			if (!ProjectWorldToPixel(World, VP, RenderW, RenderH, Px))
+				continue;
+
+			// Учитываем в FullBox всегда (даже если Px вне экрана)
+			FullBox.Include(Px);
+			bHasAnyProjected = true;
+
+			// Учитываем в InFrameBox только если точка реально в кадре
+			if (Px.X >= 0.f && Px.X < float(RenderW) &&
+				Px.Y >= 0.f && Px.Y < float(RenderH))
 			{
-				if (Px.X >= 0 && Px.X < RenderW &&
-					Px.Y >= 0 && Px.Y < RenderH)
-				{
-					OutBounds.Include(Px);
-					bHasVisiblePoint = true;
-				}
+				InFrameBox.Include(Px);
+				bHasAnyInFrame = true;
 			}
 		}
 	}
 
-	if (!bHasVisiblePoint || !OutBounds.IsValid())
+	// Если вообще ничего не спроецировалось или объект не дал валидный bbox
+	if (!bHasAnyProjected || !FullBox.IsValid())
 		return false;
 
-	return true;
+	// Если в кадр не попала ни одна точка - объекта в кадре нет
+	if (!bHasAnyInFrame || !InFrameBox.IsValid())
+		return false;
+
+	// ---- ФИЛЬТР "минимум 50% bbox в кадре" ----
+	const float FullW = (FullBox.Max.X - FullBox.Min.X);
+	const float FullH = (FullBox.Max.Y - FullBox.Min.Y);
+	const float FullArea = FullW * FullH;
+
+	const float VisW = (InFrameBox.Max.X - InFrameBox.Min.X);
+	const float VisH = (InFrameBox.Max.Y - InFrameBox.Min.Y);
+	const float VisArea = VisW * VisH;
+
+	// защита от мусора
+	if (FullArea <= KINDA_SMALL_NUMBER)
+		return false;
+
+	const float Ratio = VisArea / FullArea;
+
+	// 1) минимум доля bbox в кадре (например 0.5)
+	if (Ratio < MinInFrameBBoxRatio)
+		return false;
+
+	// 2) отсечь “еле видно”
+	if (VisArea < MinVisibleAreaPx)
+		return false;
+	if (VisW < MinVisibleWidthPx)
+		return false;
+	if (VisH < MinVisibleHeightPx)
+		return false;
+
+	// OutBounds отдаём уже “видимый” bbox (в координатах кадра, 0,0 = top-left)
+	OutBounds = InFrameBox;
+
+	// на всякий — clamp
+	OutBounds.Min.X = FMath::Clamp(OutBounds.Min.X, 0.f, float(RenderW - 1));
+	OutBounds.Min.Y = FMath::Clamp(OutBounds.Min.Y, 0.f, float(RenderH - 1));
+	OutBounds.Max.X = FMath::Clamp(OutBounds.Max.X, 0.f, float(RenderW - 1));
+	OutBounds.Max.Y = FMath::Clamp(OutBounds.Max.Y, 0.f, float(RenderH - 1));
+
+	return OutBounds.IsValid();
 }
 
 FMatrix UScreenBoundsComponent::BuildViewProjection(UCameraComponent* Camera, int32 W, int32 H)
