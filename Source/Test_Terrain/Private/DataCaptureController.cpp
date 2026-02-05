@@ -52,16 +52,17 @@ void ADataCaptureController::BeginPlay()
 		NextActor();
 		//CameraControllerComponent->UpdateCameraTransform();
 	}
+	OutputDirBaseName = GI->VehicleSpawnSettings.OutputDirBaseName;
 	
-	FString GameFolder = GI->GameRootDir;
-	OutputDir = GameFolder;
-	
-	GetPathSave();
-	
+	FString path = GI->GameRootDir;
+	OutputDirBaseName = FPaths::Combine(path, *OutputDirBaseName);
+	OutputDir = FPaths::Combine(OutputDirBaseName, "DataTXT");
+	OutputDirBaseName = FPaths::Combine(OutputDirBaseName, "Image");
+
 	SetParams();
 }
 
-void ADataCaptureController::SetParams() const
+void ADataCaptureController::SetParams()
 {
 	CameraControllerComponent->MaxShot = GI->VehicleSpawnSettings.MaxShot;
 	CameraControllerComponent->OrbitHeightMin = GI->VehicleSpawnSettings.OrbitHeightMin;
@@ -71,29 +72,14 @@ void ADataCaptureController::SetParams() const
 	CameraControllerComponent->JitterDegrees = GI->VehicleSpawnSettings.JitterDegrees;
 	CameraControllerComponent->JitterLocation = GI->VehicleSpawnSettings.JitterLocation;
 	CameraControllerComponent->MaxShotOneObjects = GI->VehicleSpawnSettings.MaxShotOneObjects;
+	
+	RenderH = GI->VehicleSpawnSettings.RenderH;
+	RenderW = GI->VehicleSpawnSettings.RenderW;
+	
+	SpatialSampleCount = GI->VehicleSpawnSettings.SpatialSampleCount;
+	TemporalSampleCount = GI->VehicleSpawnSettings.TemporalSampleCount;
 }
 
-FString ADataCaptureController::GetPathSave()
-{
-	IPlatformFile& PF = FPlatformFileManager::Get().GetPlatformFile();
-	FString ProjectDir;
-	
-#if WITH_EDITOR
-	ProjectDir = FPaths::ProjectDir();
-#else
-	const FString BinDir = FPlatformProcess::BaseDir();
-	const FString Root   = FPaths::ConvertRelativePathToFull(
-		FPaths::Combine(BinDir, TEXT("../../"))
-	);
-	ProjectDir = Root;
-#endif
-	
-	FString Path = FPaths::Combine(ProjectDir, TEXT("Dataset"));
-	
-	PF.CreateDirectory(*Path);
-	
-	return Path;
-}
 
 void ADataCaptureController::UpdateCameraTransform()
 {
@@ -154,12 +140,12 @@ void ADataCaptureController::CaptureAndRenderOneFrame()
 	RenderCamera = CameraActor->GetCameraComponent();
 
 	const FString FrameBaseName = FString::Printf(TEXT("frame_%05d"), CurrentShot);
-
+	
 	// 1) Сохраняем аннотацию именно под RenderW/RenderH
 	SaveTxtForCurrentFrame(FrameBaseName);
 
 	// 2) Запускаем Blueprint рендер
-	StartRenderImage(MyPC, RenderW, RenderH, FrameBaseName);
+	StartRenderImage(MyPC, RenderW, RenderH, FrameBaseName, OutputDirBaseName, SpatialSampleCount, TemporalSampleCount);
 }
 
 void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName)
@@ -199,7 +185,7 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 		ATargetActor* TA = Cast<ATargetActor>(A);
 		
 		FString DirTA = TA->FolderId;
-		FString GameFolder = GI->GameRootDir;
+		FString GameFolder = GI->GameDataUserDir;
 		
 		FString Path = FPaths::Combine(GameFolder, DirTA);
 		FString FinalPath = FPaths::Combine(Path, TEXT("params.txt"));

@@ -9,7 +9,9 @@ void UMyGameInstance::Init()
 	
 	LoadVehicleSettingsFromJson();
 	
-	GameRootDir = GetGameRootDir();
+	GameDataUserDir = GetGameDataUserDir();
+	GameRootDir = GetGameFilePath();
+	GameRootDir = FPaths::Combine(GameRootDir, TEXT("Dataset"));
 }
 
 bool UMyGameInstance::SaveVehicleSettingsToJson()
@@ -69,7 +71,7 @@ bool UMyGameInstance::LoadVehicleSettingsFromJson()
 	return true;
 }
 
-FString UMyGameInstance::GetGameRootDir()
+FString UMyGameInstance::GetGameDataUserDir()
 {
 #if WITH_EDITOR
 	return FPaths::Combine(FPaths::ProjectDir(), TEXT("DataUser"));
@@ -85,4 +87,17 @@ FString UMyGameInstance::GetGameRootDir()
 FString UMyGameInstance::GetSettingsFilePath()
 {
 	return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("VehicleSpawnSettings.json"));
+}
+
+FString UMyGameInstance::GetGameFilePath()
+{
+#if WITH_EDITOR
+	return FPaths::ProjectDir();
+#else
+	const FString BinDir = FPlatformProcess::BaseDir();
+	const FString Root   = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(BinDir, TEXT("../../"))
+	);
+	return Root;
+#endif
 }

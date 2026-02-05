@@ -26,7 +26,7 @@ public:
 
 	// BP реализует: запускает MoviePipeline рендер одного кадра
 	UFUNCTION(BlueprintImplementableEvent, Category="Dataset")
-	void StartRenderImage(AMyPC* PC, int32 InRenderW, int32 InRenderH, const FString& FrameBaseName);
+	void StartRenderImage(AMyPC* PC, int32 InRenderW, int32 InRenderH, const FString& FrameBaseName, const FString& Dir, int SSC, int32 TSC);
 	
 	UFUNCTION(BlueprintImplementableEvent, Category="Dataset")
 	void FinishRender();
@@ -50,14 +50,20 @@ public:
 	UPROPERTY(EditAnywhere, Category="Dataset")
 	FString OutputDir = TEXT("C:/Dataset");
 
-	UPROPERTY(EditAnywhere, Category="Dataset")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
 	int32 RenderW = 1920;
 
-	UPROPERTY(EditAnywhere, Category="Dataset")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
 	int32 RenderH = 1080;
 
 	UPROPERTY(EditAnywhere, Category="Dataset")
 	int32 NumShots = 1;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
+	int SpatialSampleCount = 1;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
+	int TemporalSampleCount = 1;
 
 	UFUNCTION(BlueprintCallable)
 	void Start();
@@ -66,6 +72,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dataset")
 	UCameraComponent* RenderCamera = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dataset")
+	FString OutputDirBaseName = TEXT("BaseData");
 	
 	UFUNCTION()
 	static bool IsBoxAtLeastVisiblePercent(const FScreenBox& Box, int32 W, int32 H, float MinPercent);
@@ -95,7 +104,5 @@ private:
 	UPROPERTY()
 	UMyGameInstance* GI;
 	
-	void SetParams() const;
-	
-	FString GetPathSave();
+	void SetParams();
 };

@@ -250,8 +250,20 @@ void UScreenBoundsComponent::BeginPlay()
 	
 	const auto GI = GetWorld()->GetGameInstance<UMyGameInstance>();
 	
+	if (!GI) return;
+	
 	VertexSampleStep = GI->VehicleSpawnSettings.VertexSampleStep;
-
+	MinInFrameBBoxRatio = (float)GI->VehicleSpawnSettings.MinInFrameBBoxRatio / 100.f;
+	MinVisibleAreaPx = GI->VehicleSpawnSettings.MinVisibleAreaPx;
+	MinVisibleWidthPx = GI->VehicleSpawnSettings.MinVisibleWidthPx;
+	MinVisibleHeightPx = GI->VehicleSpawnSettings.MinVisibleHeightPx;
+	bUseOcclusionFilter = GI->VehicleSpawnSettings.bUseOcclusionFilter;
+	MinVisiblePointRatio = GI->VehicleSpawnSettings.MinVisiblePointRatio;
+	MaxOcclusionRays = GI->VehicleSpawnSettings.MaxOcclusionRays;
+	MinOcclusionRays = GI->VehicleSpawnSettings.MinOcclusionRays;
+	OcclusionTraceChannel = GI->VehicleSpawnSettings.OcclusionTraceChannel;
+	bOcclusionTraceComplex = GI->VehicleSpawnSettings.bOcclusionTraceComplex;
+	
 	TArray<UActorComponent*> Comps;
 	GetOwner()->GetComponents(Comps);
 
