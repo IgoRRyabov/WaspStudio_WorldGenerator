@@ -96,4 +96,6 @@ private:
 	UMyGameInstance* GI;
 	
 	void SetParams() const;
+	
+	FString GetPathSave();
 };

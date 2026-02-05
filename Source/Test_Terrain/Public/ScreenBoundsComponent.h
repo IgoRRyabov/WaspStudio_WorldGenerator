@@ -84,6 +84,8 @@ public:
 		FScreenBox& OutBounds
 	) const;
 
+	
+	// Проверка на размер объекта, и на попадание в кадр
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Filter")
 	float MinInFrameBBoxRatio = 0.5f;
 	
@@ -95,6 +97,34 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Filter")
 	float MinVisibleHeightPx = 20.f;
+	
+	
+	//
+	// Включить проверку окклюзии
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion")
+	bool bUseOcclusionFilter = true;
+
+	// Минимальная доля "видимых" точек (0..1). Например 0.5 = хотя бы 50% точек без перекрытий
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float MinVisiblePointRatio = 0.95f;
+
+	// Максимум трасс на объект (чтобы не убить производительность)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion", meta=(ClampMin="8", ClampMax="4096"))
+	int32 MaxOcclusionRays = 15000;
+
+	// Минимум трасс, чтобы решение было "стабильным"
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion", meta=(ClampMin="8", ClampMax="512"))
+	int32 MinOcclusionRays = 32;
+
+	// Канал трассировки: обычно Visibility
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion")
+	TEnumAsByte<ECollisionChannel> OcclusionTraceChannel = ECC_Visibility;
+
+	// Трассить Complex (по треугольникам) — точнее, но дороже
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion")
+	bool bOcclusionTraceComplex = true;
+	
+	
 	
 protected:
 	virtual void BeginPlay() override;

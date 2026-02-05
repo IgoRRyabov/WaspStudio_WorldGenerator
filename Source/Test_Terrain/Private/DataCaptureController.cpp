@@ -56,6 +56,8 @@ void ADataCaptureController::BeginPlay()
 	FString GameFolder = GI->GameRootDir;
 	OutputDir = GameFolder;
 	
+	GetPathSave();
+	
 	SetParams();
 }
 
@@ -69,6 +71,28 @@ void ADataCaptureController::SetParams() const
 	CameraControllerComponent->JitterDegrees = GI->VehicleSpawnSettings.JitterDegrees;
 	CameraControllerComponent->JitterLocation = GI->VehicleSpawnSettings.JitterLocation;
 	CameraControllerComponent->MaxShotOneObjects = GI->VehicleSpawnSettings.MaxShotOneObjects;
+}
+
+FString ADataCaptureController::GetPathSave()
+{
+	IPlatformFile& PF = FPlatformFileManager::Get().GetPlatformFile();
+	FString ProjectDir;
+	
+#if WITH_EDITOR
+	ProjectDir = FPaths::ProjectDir();
+#else
+	const FString BinDir = FPlatformProcess::BaseDir();
+	const FString Root   = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(BinDir, TEXT("../../"))
+	);
+	ProjectDir = Root;
+#endif
+	
+	FString Path = FPaths::Combine(ProjectDir, TEXT("Dataset"));
+	
+	PF.CreateDirectory(*Path);
+	
+	return Path;
 }
 
 void ADataCaptureController::UpdateCameraTransform()

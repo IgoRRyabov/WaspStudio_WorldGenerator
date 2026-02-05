@@ -32,6 +32,28 @@ bool UScreenBoundsComponent::ComputeBoundsFromCamera(UCameraComponent* Camera, i
 	bool bHasAnyProjected = false;
 	bool bHasAnyInFrame = false;
 
+	TArray<FVector> OcclusionWorldPoints;
+	OcclusionWorldPoints.Reserve(FMath::Max(8, MaxOcclusionRays));
+	
+	int32 SeenInFramePoints = 0;
+	
+	auto ReservoirAdd = [&](const FVector& P)
+	{
+		SeenInFramePoints++;
+		
+		const int32 Cap = FMath::Max(8, MaxOcclusionRays);
+		if (OcclusionWorldPoints.Num() < Cap)
+		{
+			OcclusionWorldPoints.Add(P);
+		}
+		else
+		{
+			const int32 j = FMath::RandRange(1, SeenInFramePoints);
+			if (j <= Cap)
+				OcclusionWorldPoints[j - 1] = P;
+		}
+	};
+	
 	for (const FCachedMeshData& CM : CachedMeshes)
 	{
 		const UStaticMeshComponent* SM = CM.MeshComp.Get();
@@ -57,6 +79,11 @@ bool UScreenBoundsComponent::ComputeBoundsFromCamera(UCameraComponent* Camera, i
 			{
 				InFrameBox.Include(Px);
 				bHasAnyInFrame = true;
+				
+				if (bUseOcclusionFilter)
+				{
+					ReservoirAdd(World);
+				}
 			}
 		}
 	}
@@ -96,6 +123,71 @@ bool UScreenBoundsComponent::ComputeBoundsFromCamera(UCameraComponent* Camera, i
 	if (VisH < MinVisibleHeightPx)
 		return false;
 
+	
+	// Фильтр: окклюзия в процентах (по лучам)
+	if (bUseOcclusionFilter)
+	{
+		if (OcclusionWorldPoints.Num() < FMath::Max(8, MinOcclusionRays / 2))
+			return false;
+		
+		UWorld* World = GetWorld();
+		if (!World) return false;
+		
+		AActor* Owner = GetOwner();
+		if (!Owner) return false;
+		
+		const FVector CamLoc = Camera->GetComponentLocation();
+		
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(BoundsOcclusion), bOcclusionTraceComplex);
+		
+		int32 Considered = 0;
+		int32 Visible = 0;
+		
+		const int32 NeedVisibleMin = FMath::CeilToInt(float(MinOcclusionRays) * MinVisiblePointRatio);
+		
+		const int32 MaxRays = FMath::Max(MinOcclusionRays, MaxOcclusionRays);
+		const int32 RaysToUse = FMath::Clamp(OcclusionWorldPoints.Num(),MinOcclusionRays, MaxRays);
+		
+		for (int32 idx = 0; idx < RaysToUse; idx++)
+		{
+			const FVector P = OcclusionWorldPoints[idx];
+			
+			FHitResult Hit;
+			const bool bHit = World->LineTraceSingleByChannel(Hit, CamLoc, P, OcclusionTraceChannel, Params);
+			
+			bool bPointVisible = false;
+			
+			if (!bHit)
+			{
+				bPointVisible = true;
+			}
+			else
+			{
+				bPointVisible = Hit.GetActor() == Owner;
+			}
+			
+			Considered++;
+			if (bPointVisible) Visible++;
+			
+			const int32 Remaining = RaysToUse - Considered;
+			if (Visible + Remaining < FMath::CeilToInt(float(RaysToUse) * MinVisiblePointRatio))
+				return false;
+			
+			if (Considered >= MinOcclusionRays && Visible >= FMath::CeilToInt(float(Considered) * MinVisiblePointRatio))
+			{
+				//break;
+			}
+		}
+		
+		if (Considered < MinOcclusionRays)
+			return false;
+		
+		const float VisibleRatio = float(Visible) / float(Considered);
+		if (VisibleRatio < MinVisiblePointRatio)
+			return false;
+	}
+	
+	
 	// OutBounds отдаём уже “видимый” bbox (в координатах кадра, 0,0 = top-left)
 	OutBounds = InFrameBox;
 
