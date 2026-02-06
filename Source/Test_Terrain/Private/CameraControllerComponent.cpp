@@ -7,13 +7,15 @@ UCameraControllerComponent::UCameraControllerComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UCameraControllerComponent::UpdateCameraTransform()
+void UCameraControllerComponent::UpdateCameraTransform(int32 ShotIndex)
 {
-	if (!SelectedActor || !RenderCamera)return;
+	if (!SelectedActor || !RenderCamera) return;
 	
-	if (CurrentShot >= MaxShot) CurrentShot = 0;
+	// Ensure we handle division by zero
+	const int32 TotalShots = (MaxShotOneObjects > 0) ? MaxShotOneObjects : 1;
+	const int32 SafeIndex = ShotIndex % TotalShots;
 	
-	const float Alpha = (float)(CurrentShot % MaxShot) / (float)MaxShot;
+	const float Alpha = (float)SafeIndex / (float)TotalShots;
 	const float AngleDeg = Alpha * 360.f;
 	
 	const FVector Center = SelectedActor->GetActorLocation();
@@ -39,7 +41,7 @@ void UCameraControllerComponent::UpdateCameraTransform()
 	BaseCamera->SetActorLocation(Pos);
 	BaseCamera->SetActorRotation(LookAtRotator);
 	
-	CurrentShot++;
+	CurrentShot = ShotIndex; // Updating internal state just in case
 }
 
 

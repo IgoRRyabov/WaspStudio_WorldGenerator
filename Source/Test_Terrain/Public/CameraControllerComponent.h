@@ -16,7 +16,7 @@ public:
 	UCameraControllerComponent();
 
 	UFUNCTION(BlueprintCallable)
-	void UpdateCameraTransform();
+	void UpdateCameraTransform(int32 ShotIndex);
 	
 	void Init(ACameraActor* Cam, AActor* TargetActor)
 	{

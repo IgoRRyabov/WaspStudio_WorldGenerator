@@ -92,7 +92,7 @@ void ADataCaptureController::SetParams()
 void ADataCaptureController::UpdateCameraTransform()
 {
 	if (CameraControllerComponent)
-		CameraControllerComponent->UpdateCameraTransform();
+		CameraControllerComponent->UpdateCameraTransform(LocalCurrentShot);
 }
 
 
@@ -163,6 +163,7 @@ void ADataCaptureController::SaveTxtForCurrentFrame(const FString& FrameBaseName
 	
 	int32 Saved = 0;
 
+	Actors.Reset();
 	UGameplayStatics::GetAllActorsWithTag(GetWorld(), DetectionTag, Actors);
 	
 	for (AActor* A : Actors)
@@ -228,10 +229,22 @@ void ADataCaptureController::NextActor()
 	if (AllActors.IsEmpty()) UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATargetActor::StaticClass(), AllActors);
 	
 	if (AllActors.Num() == 0) return;
-	if (!AllActors[NumActors]) NumActors = 0;
 	
-		if (CameraControllerComponent)
+	// Reset if we reached the end
+	if (AllActors.IsValidIndex(NumActors) == false)
+	{
+		NumActors = 0;
+	}
+	
+	// Check if specific actor is valid (destroyed?) - though rarely happens if we just warned
+	if (!AllActors[NumActors]) 
+	{
+		NumActors = 0; // Fallback or increment? 
+	}
+	
+	if (CameraControllerComponent && AllActors.IsValidIndex(NumActors))
 		CameraControllerComponent->SetActor(AllActors[NumActors]);
+		
 	UpdateCameraTransform();
 	
 	NumActors++;
