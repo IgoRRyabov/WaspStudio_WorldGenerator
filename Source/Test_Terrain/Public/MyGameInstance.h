@@ -85,11 +85,11 @@ struct FVehicleSpawnSettings
 
 	// Минимальная доля "видимых" точек (0..1). Например 0.5 = хотя бы 50% точек без перекрытий
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion", meta=(ClampMin="0.0", ClampMax="1.0"))
-	float MinVisiblePointRatio = 0.95f;
+	float MinVisiblePointRatio = 95.f;
 
 	// Максимум трасс на объект (чтобы не убить производительность)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion", meta=(ClampMin="8", ClampMax="4096"))
-	int32 MaxOcclusionRays = 15000;
+	int32 MaxOcclusionRays = 15;
 
 	// Минимум трасс, чтобы решение было "стабильным"
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Bounds|Occlusion", meta=(ClampMin="8", ClampMax="512"))

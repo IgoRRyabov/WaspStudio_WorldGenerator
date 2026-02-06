@@ -258,8 +258,8 @@ void UScreenBoundsComponent::BeginPlay()
 	MinVisibleWidthPx = GI->VehicleSpawnSettings.MinVisibleWidthPx;
 	MinVisibleHeightPx = GI->VehicleSpawnSettings.MinVisibleHeightPx;
 	bUseOcclusionFilter = GI->VehicleSpawnSettings.bUseOcclusionFilter;
-	MinVisiblePointRatio = GI->VehicleSpawnSettings.MinVisiblePointRatio;
-	MaxOcclusionRays = GI->VehicleSpawnSettings.MaxOcclusionRays;
+	MinVisiblePointRatio = GI->VehicleSpawnSettings.MinVisiblePointRatio / 100.f;
+	MaxOcclusionRays = GI->VehicleSpawnSettings.MaxOcclusionRays * 1000;
 	MinOcclusionRays = GI->VehicleSpawnSettings.MinOcclusionRays;
 	OcclusionTraceChannel = GI->VehicleSpawnSettings.OcclusionTraceChannel;
 	bOcclusionTraceComplex = GI->VehicleSpawnSettings.bOcclusionTraceComplex;
