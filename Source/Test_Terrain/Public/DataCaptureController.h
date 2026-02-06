@@ -62,8 +62,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
 	int SpatialSampleCount = 1;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
 	int TemporalSampleCount = 1;
+
+	UFUNCTION(BlueprintCallable, Category="TimeOfDay")
+	void ApplyTimeOfDay();
+
+	UFUNCTION(BlueprintCallable, Category="TimeOfDay")
+	void ApplyFogLevel();
 
 	UFUNCTION(BlueprintCallable)
 	void Start();

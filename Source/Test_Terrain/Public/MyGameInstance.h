@@ -4,6 +4,24 @@
 #include "Engine/GameInstance.h"
 #include "MyGameInstance.generated.h"
 
+UENUM(BlueprintType)
+enum class ETimeOfDay : uint8
+{
+	Morning   UMETA(DisplayName = "Morning"),
+	Day       UMETA(DisplayName = "Day"),
+	Evening   UMETA(DisplayName = "Evening"),
+	Night     UMETA(DisplayName = "Night")
+};
+
+UENUM(BlueprintType)
+enum class EFogLevel : uint8
+{
+	None    UMETA(DisplayName = "No Fog"),
+	Light   UMETA(DisplayName = "Light Fog"),
+	Medium  UMETA(DisplayName = "Medium Fog"),
+	Heavy   UMETA(DisplayName = "Heavy Fog")
+};
+
 USTRUCT(BlueprintType)
 struct FVehicleSpawnSettings
 {
@@ -115,10 +133,16 @@ struct FVehicleSpawnSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
 	int32 RenderH = 1080;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
 	int32 InderRenderWAndH = 0;
 	
-	int32 VersionSave = 3;
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
+	ETimeOfDay TimeOfDay = ETimeOfDay::Day;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Graphics")
+	EFogLevel FogLevel = EFogLevel::None;
+	
+	int32 VersionSave = 4;
 };
 
 

@@ -8,6 +8,12 @@
 #include "TargetActor.h"
 #include "VectorUtil.h"
 #include "Camera/CameraActor.h"
+#include "Components/LightComponent.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/SkyLight.h"
+#include "Components/SkyLightComponent.h"
+#include "Engine/ExponentialHeightFog.h"
+#include "Components/ExponentialHeightFogComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 ADataCaptureController::ADataCaptureController()
@@ -57,9 +63,11 @@ void ADataCaptureController::BeginPlay()
 	FString path = GI->GameRootDir;
 	OutputDirBaseName = FPaths::Combine(path, *OutputDirBaseName);
 	OutputDir = FPaths::Combine(OutputDirBaseName, "DataTXT");
-	OutputDirBaseName = FPaths::Combine(OutputDirBaseName, "Image");
+		OutputDirBaseName = FPaths::Combine(OutputDirBaseName, "Image");
 
 	SetParams();
+	ApplyTimeOfDay();
+	ApplyFogLevel();
 }
 
 void ADataCaptureController::SetParams()
@@ -222,9 +230,208 @@ void ADataCaptureController::NextActor()
 	if (AllActors.Num() == 0) return;
 	if (!AllActors[NumActors]) NumActors = 0;
 	
-	if (CameraControllerComponent)
+		if (CameraControllerComponent)
 		CameraControllerComponent->SetActor(AllActors[NumActors]);
 	UpdateCameraTransform();
 	
 	NumActors++;
+}
+
+void ADataCaptureController::ApplyTimeOfDay()
+{
+	if (!GI)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ApplyTimeOfDay: GameInstance not found"));
+		return;
+	}
+	
+	// Find DirectionalLight (sun)
+	TArray<AActor*> Lights;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ADirectionalLight::StaticClass(), Lights);
+	if (Lights.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ApplyTimeOfDay: No DirectionalLight found"));
+		return;
+	}
+	
+	ADirectionalLight* Sun = Cast<ADirectionalLight>(Lights[0]);
+	if (!Sun)
+	{
+		return;
+	}
+	
+	const ETimeOfDay Time = GI->VehicleSpawnSettings.TimeOfDay;
+	
+	FRotator NewRotation;
+	float Intensity = 10.0f;
+	FLinearColor LightColor = FLinearColor::White;
+	
+	// Post-process settings
+	float ExposureBias = 0.0f;
+	FLinearColor ColorGrading = FLinearColor::White;
+	float SkyLightIntensity = 1.0f;
+	
+	switch (Time)
+	{
+		case ETimeOfDay::Morning:
+			// Golden hour - low sun from East, warm tones
+			NewRotation = FRotator(-20.0f, 80.0f, 0.0f);
+			Intensity = 6.0f;
+			LightColor = FLinearColor(1.0f, 0.75f, 0.5f);  // Golden orange
+			ExposureBias = 0.5f;  // Slightly brighter
+			ColorGrading = FLinearColor(1.0f, 0.95f, 0.85f);  // Warm tint
+			SkyLightIntensity = 0.8f;
+			break;
+			
+		case ETimeOfDay::Day:
+			// High noon - sun at zenith, neutral bright
+			NewRotation = FRotator(-85.0f, 0.0f, 0.0f);
+			Intensity = 10.0f;
+			LightColor = FLinearColor(1.0f, 0.98f, 0.95f);
+			ExposureBias = 0.0f;
+			ColorGrading = FLinearColor::White;
+			SkyLightIntensity = 1.0f;
+			break;
+			
+		case ETimeOfDay::Evening:
+			// Sunset - low sun from West, deep orange/red
+			NewRotation = FRotator(-15.0f, 260.0f, 0.0f);
+			Intensity = 4.0f;
+			LightColor = FLinearColor(1.0f, 0.5f, 0.2f);  // Deep sunset orange
+			ExposureBias = 0.8f;  // Compensate for low intensity
+			ColorGrading = FLinearColor(1.0f, 0.85f, 0.7f);  // Warm tint
+			SkyLightIntensity = 0.6f;
+			break;
+			
+		case ETimeOfDay::Night:
+			// Moonlit night - dark but objects visible
+			NewRotation = FRotator(-45.0f, 180.0f, 0.0f);
+			Intensity = 2.0f;  // Low moonlight
+			LightColor = FLinearColor(0.3f, 0.4f, 0.7f);  // Deep blue
+			ExposureBias = -3.0f;  // Very dark exposure
+			ColorGrading = FLinearColor(0.5f, 0.6f, 0.9f);  // Strong blue tint
+			SkyLightIntensity = 0.2f;
+			break;
+	}
+	
+	// Apply sun rotation and lighting
+	Sun->SetActorRotation(NewRotation);
+	if (ULightComponent* LightComp = Sun->GetLightComponent())
+	{
+		LightComp->SetIntensity(Intensity);
+		LightComp->SetLightColor(LightColor);
+	}
+	
+	// Apply SkyLight intensity and recapture
+	TArray<AActor*> SkyLights;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASkyLight::StaticClass(), SkyLights);
+	for (AActor* SL : SkyLights)
+	{
+		if (ASkyLight* Sky = Cast<ASkyLight>(SL))
+		{
+			if (USkyLightComponent* SkyComp = Sky->GetLightComponent())
+			{
+				SkyComp->SetIntensity(SkyLightIntensity);
+				SkyComp->RecaptureSky();
+			}
+		}
+	}
+	
+	// Apply camera post-process settings
+	if (RenderCamera)
+	{
+		FPostProcessSettings& PP = RenderCamera->PostProcessSettings;
+		
+		// Enable and set exposure bias
+		PP.bOverride_AutoExposureBias = true;
+		PP.AutoExposureBias = ExposureBias;
+		
+		// Color grading - global color multiplier
+		PP.bOverride_ColorGain = true;
+		PP.ColorGain = FVector4(ColorGrading.R, ColorGrading.G, ColorGrading.B, 1.0f);
+		
+		// Bloom for atmospheric effect
+		PP.bOverride_BloomIntensity = true;
+		PP.BloomIntensity = (Time == ETimeOfDay::Morning || Time == ETimeOfDay::Evening) ? 0.8f : 0.5f;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("ApplyTimeOfDay: Set to %d, Intensity=%.1f, Exposure=%.1f"), 
+		static_cast<int32>(Time), Intensity, ExposureBias);
+}
+
+void ADataCaptureController::ApplyFogLevel()
+{
+	if (!GI) return;
+
+	// Find Fog Actor
+	TArray<AActor*> Fogs;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AExponentialHeightFog::StaticClass(), Fogs);
+	
+	AExponentialHeightFog* FogActor = nullptr;
+	if (Fogs.Num() > 0)
+	{
+		FogActor = Cast<AExponentialHeightFog>(Fogs[0]);
+	}
+	
+	if (!FogActor)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ApplyFogLevel: No ExponentialHeightFog found in scene"));
+		return;
+	}
+
+	UExponentialHeightFogComponent* FogComp = FogActor->GetComponent();
+	if (!FogComp) return;
+
+	const EFogLevel Level = GI->VehicleSpawnSettings.FogLevel;
+	
+	float Density = 0.0f;
+	float Falloff = 0.2f;
+	float StartDist = 0.0f;
+	bool bVolumetric = false;
+	
+	switch (Level)
+	{
+		case EFogLevel::None:
+			Density = 0.000001;
+			break;
+			
+		case EFogLevel::Light:
+			Density = 0.004f;
+			Falloff = 0.1f;
+			StartDist = 500.0f;
+			bVolumetric = true;
+			break;
+			
+		case EFogLevel::Medium:
+			Density = 0.004f;
+			Falloff = 0.13f;
+			StartDist = 400.0f;
+			bVolumetric = true;
+			break;
+			
+		case EFogLevel::Heavy:
+			Density = 0.01f;
+			Falloff = 0.07f;
+			StartDist = 250.0f;
+			bVolumetric = true;
+			break;
+	}
+	
+	FogComp->SetFogDensity(Density);
+	FogComp->SetFogHeightFalloff(Falloff);
+	FogComp->SetStartDistance(StartDist);
+	FogComp->SetVolumetricFog(bVolumetric);
+	
+	// If heavy fog, maybe adjust max opacity?
+	if (Level == EFogLevel::Heavy)
+	{
+		FogComp->SetFogMaxOpacity(1.0f);
+	}
+	else
+	{
+		FogComp->SetFogMaxOpacity(1.0f); // Default
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("ApplyFogLevel: Set to %d, Density=%.3f"), 
+		static_cast<int32>(Level), Density);
 }
