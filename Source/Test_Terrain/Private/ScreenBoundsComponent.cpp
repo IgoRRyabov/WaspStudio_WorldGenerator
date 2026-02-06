@@ -4,6 +4,7 @@
 #include "Engine/StaticMesh.h"
 #include "StaticMeshResources.h"
 #include "SceneView.h"
+#include "Rendering/SkeletalMeshRenderData.h"
 
 UScreenBoundsComponent::UScreenBoundsComponent()
 {
@@ -56,36 +57,87 @@ bool UScreenBoundsComponent::ComputeBoundsFromCamera(UCameraComponent* Camera, i
 	
 	for (const FCachedMeshData& CM : CachedMeshes)
 	{
-		const UStaticMeshComponent* SM = CM.MeshComp.Get();
-		if (!SM) continue;
-
-		const FTransform X = SM->GetComponentTransform();
-
-		for (int32 i = 0; i < CM.LocalVertices.Num(); i += Step)
+		// DEBUG: лог какой тип компонента обрабатывается
+		UE_LOG(LogTemp, Verbose, TEXT("Processing CachedMesh: MeshComp=%s, SkeletalComp=%s"),
+			CM.MeshComp.IsValid() ? TEXT("Valid") : TEXT("Invalid"),
+			CM.SkeletalComp.IsValid() ? TEXT("Valid") : TEXT("Invalid"));
+		
+		if (CM.MeshComp.IsValid())
 		{
-			const FVector World = X.TransformPosition(CM.LocalVertices[i]);
+			const UStaticMeshComponent* SM = CM.MeshComp.Get();
+			if (!SM) continue;
 
-			FVector2D Px;
-			if (!ProjectWorldToPixel(World, VP, RenderW, RenderH, Px))
-				continue;
+			const FTransform X = SM->GetComponentTransform();
 
-			// Учитываем в FullBox всегда (даже если Px вне экрана)
-			FullBox.Include(Px);
-			bHasAnyProjected = true;
-
-			// Учитываем в InFrameBox только если точка реально в кадре
-			if (Px.X >= 0.f && Px.X < float(RenderW) &&
-				Px.Y >= 0.f && Px.Y < float(RenderH))
+			for (int32 i = 0; i < CM.LocalVertices.Num(); i += Step)
 			{
-				InFrameBox.Include(Px);
-				bHasAnyInFrame = true;
-				
-				if (bUseOcclusionFilter)
+				const FVector World = X.TransformPosition(CM.LocalVertices[i]);
+
+				FVector2D Px;
+				if (!ProjectWorldToPixel(World, VP, RenderW, RenderH, Px))
+					continue;
+
+				// Учитываем в FullBox всегда (даже если Px вне экрана)
+				FullBox.Include(Px);
+				bHasAnyProjected = true;
+
+				// Учитываем в InFrameBox только если точка реально в кадре
+				if (Px.X >= 0.f && Px.X < float(RenderW) &&
+					Px.Y >= 0.f && Px.Y < float(RenderH))
 				{
-					ReservoirAdd(World);
+					InFrameBox.Include(Px);
+					bHasAnyInFrame = true;
+				
+					if (bUseOcclusionFilter)
+					{
+						ReservoirAdd(World);
+					}
 				}
 			}
+			
+			continue;
 		}
+		
+		if (CM.SkeletalComp.IsValid())
+		{
+			USkeletalMeshComponent* SK = CM.SkeletalComp.Get();
+			if (!SK)
+			{
+				continue;
+			}
+
+			// Используем закэшированные вершины reference pose, трансформируя их в world space
+			const FTransform X = SK->GetComponentTransform();
+
+			for (int32 i = 0; i < CM.LocalVertices.Num(); i += Step)
+			{
+				const FVector World = X.TransformPosition(CM.LocalVertices[i]);
+
+				FVector2D Px;
+				if (!ProjectWorldToPixel(World, VP, RenderW, RenderH, Px))
+					continue;
+
+				// Учитываем в FullBox всегда (даже если Px вне экрана)
+				FullBox.Include(Px);
+				bHasAnyProjected = true;
+
+				// Учитываем в InFrameBox только если точка реально в кадре
+				if (Px.X >= 0.f && Px.X < float(RenderW) &&
+					Px.Y >= 0.f && Px.Y < float(RenderH))
+				{
+					InFrameBox.Include(Px);
+					bHasAnyInFrame = true;
+				
+					if (bUseOcclusionFilter)
+					{
+						ReservoirAdd(World);
+					}
+				}
+			}
+			
+			continue;
+		}
+		
 	}
 
 	// Если вообще ничего не спроецировалось или объект не дал валидный bbox
@@ -264,31 +316,97 @@ void UScreenBoundsComponent::BeginPlay()
 	OcclusionTraceChannel = GI->VehicleSpawnSettings.OcclusionTraceChannel;
 	bOcclusionTraceComplex = GI->VehicleSpawnSettings.bOcclusionTraceComplex;
 	
+	AActor* Owner = GetOwner();
+	if (!Owner)
+		return;
+	
 	TArray<UActorComponent*> Comps;
-	GetOwner()->GetComponents(Comps);
+	Owner->GetComponents(Comps);
 
 	for (UActorComponent* C : Comps)
 	{
-		UStaticMeshComponent* SM = Cast<UStaticMeshComponent>(C);
-		if (!SM || !SM->GetStaticMesh()) continue;
-
-		const FStaticMeshRenderData* RD = SM->GetStaticMesh()->GetRenderData();
-		if (!RD || RD->LODResources.Num() == 0) continue;
-
-		const FPositionVertexBuffer& VB =
-			RD->LODResources[0].VertexBuffers.PositionVertexBuffer;
-
-		FCachedMeshData Cache;
-		Cache.MeshComp = SM;
-
-		const uint32 Num = VB.GetNumVertices();
-		Cache.LocalVertices.Reserve(Num);
-
-		for (uint32 i = 0; i < Num; ++i)
+		if (UStaticMeshComponent* SM = Cast<UStaticMeshComponent>(C))
 		{
-			Cache.LocalVertices.Add(FVector(VB.VertexPosition(i)));
-		}
+			if (!SM || !SM->GetStaticMesh()) continue;
 
-		CachedMeshes.Add(MoveTemp(Cache));
+			const FStaticMeshRenderData* RD = SM->GetStaticMesh()->GetRenderData();
+			if (!RD || RD->LODResources.Num() == 0) continue;
+
+			const FPositionVertexBuffer& VB =
+				RD->LODResources[0].VertexBuffers.PositionVertexBuffer;
+
+			FCachedMeshData Cache;
+			Cache.MeshComp = SM;
+
+			const uint32 Num = VB.GetNumVertices();
+			Cache.LocalVertices.Reserve(Num);
+
+			for (uint32 i = 0; i < Num; ++i)
+			{
+				Cache.LocalVertices.Add(FVector(VB.VertexPosition(i)));
+			}
+
+			CachedMeshes.Add(MoveTemp(Cache));
+			continue;
+		}
+		
+		if (USkeletalMeshComponent* SK = Cast<USkeletalMeshComponent>(C))
+		{
+			if (!SK->GetSkeletalMeshAsset())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ScreenBoundsComponent: SkeletalMeshComponent %s has no mesh asset!"), *SK->GetName());
+				continue;
+			}
+
+			FSkeletalMeshRenderData* RenderData = SK->GetSkeletalMeshRenderData();
+			if (!RenderData || RenderData->LODRenderData.Num() == 0)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ScreenBoundsComponent: SkeletalMeshComponent %s has no render data!"), *SK->GetName());
+				continue;
+			}
+
+			// Берём LOD 0 для максимальной точности
+			const FSkeletalMeshLODRenderData& LODData = RenderData->LODRenderData[0];
+			
+			// Получаем буфер позиций вершин (reference pose)
+			const FPositionVertexBuffer& PosBuffer = LODData.StaticVertexBuffers.PositionVertexBuffer;
+			const uint32 NumVerts = PosBuffer.GetNumVertices();
+			
+			if (NumVerts == 0)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ScreenBoundsComponent: SkeletalMeshComponent %s has 0 vertices!"), *SK->GetName());
+				continue;
+			}
+
+			FCachedMeshData Cache;
+			Cache.SkeletalComp = SK;
+			Cache.SkeletalLODIndex = 0;
+			Cache.LocalVertices.Reserve(NumVerts);
+
+			// Кэшируем вершины reference pose (local space)
+			for (uint32 i = 0; i < NumVerts; ++i)
+			{
+				Cache.LocalVertices.Add(FVector(PosBuffer.VertexPosition(i)));
+			}
+
+			CachedMeshes.Add(MoveTemp(Cache));
+			UE_LOG(LogTemp, Warning, TEXT("ScreenBoundsComponent: cached SkeletalMeshComponent %s with %d vertices"), *SK->GetName(), NumVerts);
+			continue;
+		}
 	}
+	
+	// Подсчитаем отдельно StaticMesh и SkeletalMesh
+	int32 StaticCount = 0;
+	int32 SkeletalCount = 0;
+	for (const FCachedMeshData& CM : CachedMeshes)
+	{
+		if (CM.MeshComp.IsValid()) StaticCount++;
+		if (CM.SkeletalComp.IsValid()) SkeletalCount++;
+	}
+	
+	UE_LOG(LogTemp, Warning,
+		TEXT("ScreenBoundsComponent: cached %d total (%d StaticMesh, %d SkeletalMesh) for %s"),
+		CachedMeshes.Num(), StaticCount, SkeletalCount,
+		*Owner->GetName());
+	
 }

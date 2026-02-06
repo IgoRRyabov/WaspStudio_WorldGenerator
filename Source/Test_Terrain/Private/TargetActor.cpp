@@ -4,9 +4,10 @@ ATargetActor::ATargetActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
-	RootComponent = MeshComp;
-
+	//MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
+	//RootComponent = MeshComp;
+	//SkeletalMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComp"));
+	
 	ScreenBounds = CreateDefaultSubobject<UScreenBoundsComponent>(TEXT("ScreenBounds"));
 	Tags.Add("Detectable");
 }

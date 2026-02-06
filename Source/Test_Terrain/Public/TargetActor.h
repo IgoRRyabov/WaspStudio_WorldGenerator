@@ -24,8 +24,11 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	
-	UPROPERTY(VisibleAnywhere)
-	UStaticMeshComponent* MeshComp;
+	//UPROPERTY(VisibleAnywhere)
+	//UStaticMeshComponent* MeshComp;
+	
+	//UPROPERTY(VisibleAnywhere)
+	//USkeletalMeshComponent* SkeletalMeshComp;
 
 	UPROPERTY(VisibleAnywhere)
 	UScreenBoundsComponent* ScreenBounds;

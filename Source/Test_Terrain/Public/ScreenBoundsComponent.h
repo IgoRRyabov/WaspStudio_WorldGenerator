@@ -12,9 +12,15 @@ struct FCachedMeshData
 
 	UPROPERTY()
 	TWeakObjectPtr<UStaticMeshComponent> MeshComp;
+	UPROPERTY()
+	TWeakObjectPtr<USkeletalMeshComponent> SkeletalComp;
 
 	UPROPERTY()
 	TArray<FVector> LocalVertices;
+	
+	int32 SkeletalLODIndex = 0;
+	
+	TArray<FMatrix44f> CachedRefToLocals;
 };
 
 
