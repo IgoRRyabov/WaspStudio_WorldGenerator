@@ -15,6 +15,12 @@ void AMyPC::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// Устанавливаем режим ввода — Game And UI (клавиатура для игры + видимый курсор)
+	FInputModeGameAndUI InputMode;
+	InputMode.SetHideCursorDuringCapture(false);
+	SetInputMode(InputMode);
+	bShowMouseCursor = true;
+	
 	TArray<AActor*> Found;
 	TArray<AActor*> cam;
 	UGameplayStatics::GetAllActorsWithTag(GetWorld(), TEXT("BoundsTarget"), Found);
@@ -56,7 +62,7 @@ void AMyPC::BeginPlay()
 
 void AMyPC::Init()
 {
-	// DataCapture = GetWorld()->SpawnActor<ADataCaptureController>(DataCaptureController);
+		// DataCapture = GetWorld()->SpawnActor<ADataCaptureController>(DataCaptureController);
 	// DataCapture->Init(BaseCamera);
 	// UE_LOG(LogTemp, Warning, TEXT("Spawn %s"), *DataCapture->GetName());
 }
