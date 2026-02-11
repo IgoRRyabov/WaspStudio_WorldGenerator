@@ -55,7 +55,7 @@ void ADataCaptureController::BeginPlay()
 	if (CameraControllerComponent)
 	{
 		CameraControllerComponent->Init(CameraActor, TargetSceneActor);
-		NextActor();
+		//NextActor();
 		//CameraControllerComponent->UpdateCameraTransform();
 	}
 	OutputDirBaseName = GI->VehicleSpawnSettings.OutputDirBaseName;

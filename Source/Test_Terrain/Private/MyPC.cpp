@@ -7,8 +7,8 @@
 
 AMyPC::AMyPC()
 {
-	BaseCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	RootComponent = BaseCamera;
+	//BaseCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	//RootComponent = BaseCamera;
 }
 
 void AMyPC::BeginPlay()
@@ -16,16 +16,16 @@ void AMyPC::BeginPlay()
 	Super::BeginPlay();
 	
 	// Устанавливаем режим ввода — Game And UI (клавиатура для игры + видимый курсор)
-	FInputModeGameAndUI InputMode;
-	InputMode.SetHideCursorDuringCapture(false);
-	SetInputMode(InputMode);
-	bShowMouseCursor = true;
+	//FInputModeGameAndUI InputMode;
+	//InputMode.SetHideCursorDuringCapture(false);
+	//SetInputMode(InputMode);
+	//bShowMouseCursor = true;
 	
 	TArray<AActor*> Found;
 	TArray<AActor*> cam;
 	UGameplayStatics::GetAllActorsWithTag(GetWorld(), TEXT("BoundsTarget"), Found);
 
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACameraActor::StaticClass(), cam);
+	//UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACameraActor::StaticClass(), cam);
 
 	//if (cam[0])
 		//SetViewTargetWithBlend(cam[0]);

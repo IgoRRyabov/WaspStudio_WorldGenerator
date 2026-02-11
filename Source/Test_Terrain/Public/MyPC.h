@@ -20,11 +20,11 @@ public:
 	
 	virtual void BeginPlay() override;
 	
-	UCameraComponent* GetCameraComponent() const { return BaseCamera; }
+	//UCameraComponent* GetCameraComponent() const { return BaseCamera; }
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
-	UCameraComponent* BaseCamera;
+	// UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera")
+	// UCameraComponent* BaseCamera;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dataset")
 	TSubclassOf<ADataCaptureController> DataCaptureController;
