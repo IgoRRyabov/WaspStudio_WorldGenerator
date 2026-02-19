@@ -21,3 +21,6 @@ Build/
 # Прочие
 *.DotSettings
 .vscode/
+
+Dataset/
+DataUser/

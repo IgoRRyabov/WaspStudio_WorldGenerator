@@ -1,6 +1,9 @@
 # Visual Studio 2015 user specific files
 .vs/
 
+# JetBrains IDE
+.idea/
+
 # Compiled Object files
 *.slo
 *.lo
@@ -51,15 +54,11 @@ Binaries/*
 Plugins/**/Binaries/*
 
 # Builds
-Build/*
+Build/
 
-# Whitelist PakBlacklist-<BuildConfiguration>.txt files
-!Build/*/
-Build/*/**
-!Build/*/PakBlacklist*.txt
-
-# Don't ignore icon files in Build
-!Build/**/*.ico
+# Dataset output (generated)
+DataSet/*
+DataUser/*
 
 # Built data for maps
 *_BuiltData.uasset
@@ -73,3 +72,6 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+# WSL temp files
+run_log.txt
