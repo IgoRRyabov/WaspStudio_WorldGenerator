@@ -276,19 +276,19 @@ void ADataCaptureController::ApplyTimeOfDay()
 	const ETimeOfDay Time = GI->VehicleSpawnSettings.TimeOfDay;
 	
 	FRotator NewRotation;
-	float Intensity = 10.0f;
-	FLinearColor LightColor = FLinearColor::White;
+	float Intensity;
+	FLinearColor LightColor;
 	
 	// Post-process settings
-	float ExposureBias = 0.0f;
-	FLinearColor ColorGrading = FLinearColor::White;
-	float SkyLightIntensity = 1.0f;
+	float ExposureBias;
+	FLinearColor ColorGrading;
+	float SkyLightIntensity;
 	
 	switch (Time)
 	{
 		case ETimeOfDay::Morning:
 			// Golden hour - low sun from East, warm tones
-			NewRotation = FRotator(-20.0f, 80.0f, 0.0f);
+			NewRotation = FRotator(-124.0f, 80.0f, 0.0f);
 			Intensity = 6.0f;
 			LightColor = FLinearColor(1.0f, 0.75f, 0.5f);  // Golden orange
 			ExposureBias = 0.5f;  // Slightly brighter
@@ -298,17 +298,16 @@ void ADataCaptureController::ApplyTimeOfDay()
 			
 		case ETimeOfDay::Day:
 			// High noon - sun at zenith, neutral bright
-			NewRotation = FRotator(-85.0f, 0.0f, 0.0f);
-			Intensity = 10.0f;
-			LightColor = FLinearColor(1.0f, 0.98f, 0.95f);
+			NewRotation = FRotator(-154.0f, -36.0f, 0.0f);
+			Intensity = 9.2f;
+			LightColor = FLinearColor(1.0f, 1.f, 1.0f);
 			ExposureBias = 0.0f;
-			ColorGrading = FLinearColor::White;
 			SkyLightIntensity = 1.0f;
 			break;
 			
 		case ETimeOfDay::Evening:
 			// Sunset - low sun from West, deep orange/red
-			NewRotation = FRotator(-15.0f, 260.0f, 0.0f);
+			NewRotation = FRotator(0.0f, 260.0f, 0.0f);
 			Intensity = 4.0f;
 			LightColor = FLinearColor(1.0f, 0.5f, 0.2f);  // Deep sunset orange
 			ExposureBias = 0.8f;  // Compensate for low intensity
@@ -318,7 +317,7 @@ void ADataCaptureController::ApplyTimeOfDay()
 			
 		case ETimeOfDay::Night:
 			// Moonlit night - dark but objects visible
-			NewRotation = FRotator(-45.0f, 180.0f, 0.0f);
+			NewRotation = FRotator(0.f, 180.0f, 0.0f);
 			Intensity = 2.0f;  // Low moonlight
 			LightColor = FLinearColor(0.3f, 0.4f, 0.7f);  // Deep blue
 			ExposureBias = -3.0f;  // Very dark exposure
@@ -328,7 +327,10 @@ void ADataCaptureController::ApplyTimeOfDay()
 	}
 	
 	// Apply sun rotation and lighting
+	//NewRotation = FRotator(0);
+	
 	Sun->SetActorRotation(NewRotation);
+	Sun->SetActorRelativeRotation(NewRotation);
 	if (ULightComponent* LightComp = Sun->GetLightComponent())
 	{
 		LightComp->SetIntensity(Intensity);
@@ -351,22 +353,22 @@ void ADataCaptureController::ApplyTimeOfDay()
 	}
 	
 	// Apply camera post-process settings
-	if (RenderCamera)
-	{
-		FPostProcessSettings& PP = RenderCamera->PostProcessSettings;
-		
-		// Enable and set exposure bias
-		PP.bOverride_AutoExposureBias = true;
-		PP.AutoExposureBias = ExposureBias;
-		
-		// Color grading - global color multiplier
-		PP.bOverride_ColorGain = true;
-		PP.ColorGain = FVector4(ColorGrading.R, ColorGrading.G, ColorGrading.B, 1.0f);
-		
-		// Bloom for atmospheric effect
-		PP.bOverride_BloomIntensity = true;
-		PP.BloomIntensity = (Time == ETimeOfDay::Morning || Time == ETimeOfDay::Evening) ? 0.8f : 0.5f;
-	}
+	// if (RenderCamera)
+	// {
+	// 	FPostProcessSettings& PP = RenderCamera->PostProcessSettings;
+	// 	
+	// 	// Enable and set exposure bias
+	// 	PP.bOverride_AutoExposureBias = true;
+	// 	PP.AutoExposureBias = ExposureBias;
+	// 	
+	// 	// Color grading - global color multiplier
+	// 	PP.bOverride_ColorGain = true;
+	// 	PP.ColorGain = FVector4(ColorGrading.R, ColorGrading.G, ColorGrading.B, 1.0f);
+	// 	
+	// 	// Bloom for atmospheric effect
+	// 	PP.bOverride_BloomIntensity = true;
+	// 	PP.BloomIntensity = (Time == ETimeOfDay::Morning || Time == ETimeOfDay::Evening) ? 0.8f : 0.5f;
+	// }
 	
 	UE_LOG(LogTemp, Warning, TEXT("ApplyTimeOfDay: Set to %d, Intensity=%.1f, Exposure=%.1f"), 
 		static_cast<int32>(Time), Intensity, ExposureBias);
@@ -398,52 +400,33 @@ void ADataCaptureController::ApplyFogLevel()
 	const EFogLevel Level = GI->VehicleSpawnSettings.FogLevel;
 	
 	float Density = 0.0f;
-	float Falloff = 0.2f;
-	float StartDist = 0.0f;
-	bool bVolumetric = false;
+	float Falloff = 0.0f;
 	
 	switch (Level)
 	{
 		case EFogLevel::None:
-			Density = 0.000001;
+			Density = 0.001;
+			Falloff = 0.09f;
 			break;
 			
 		case EFogLevel::Light:
-			Density = 0.004f;
-			Falloff = 0.1f;
-			StartDist = 500.0f;
-			bVolumetric = true;
+			Density = 0.003f;
+			Falloff = 0.16f;
 			break;
 			
 		case EFogLevel::Medium:
-			Density = 0.004f;
-			Falloff = 0.13f;
-			StartDist = 400.0f;
-			bVolumetric = true;
+			Density = 0.008f;
+			Falloff = 0.2f;
 			break;
 			
 		case EFogLevel::Heavy:
-			Density = 0.01f;
-			Falloff = 0.07f;
-			StartDist = 250.0f;
-			bVolumetric = true;
+			Density = 0.009f;
+			Falloff = 0.25f;
 			break;
 	}
 	
 	FogComp->SetFogDensity(Density);
 	FogComp->SetFogHeightFalloff(Falloff);
-	FogComp->SetStartDistance(StartDist);
-	FogComp->SetVolumetricFog(bVolumetric);
-	
-	// If heavy fog, maybe adjust max opacity?
-	if (Level == EFogLevel::Heavy)
-	{
-		FogComp->SetFogMaxOpacity(1.0f);
-	}
-	else
-	{
-		FogComp->SetFogMaxOpacity(1.0f); // Default
-	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("ApplyFogLevel: Set to %d, Density=%.3f"), 
 		static_cast<int32>(Level), Density);
